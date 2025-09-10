@@ -1,0 +1,231 @@
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useFarmStore } from '../stores/farmStore';
+import { LogOut, Plus, MapPin, Sprout } from 'lucide-react';
+
+export default function UserDashboard() {
+  const { user, logout } = useAuth();
+  const { getFarmsByUserId, clearUserData } = useFarmStore();
+
+  // Get only current user's farms
+  const userFarms = user ? getFarmsByUserId(user.id) : [];
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const totalArea = userFarms.reduce((sum, farm) => sum + farm.area, 0);
+  const activeCrops = new Set(userFarms.map(farm => farm.crop)).size;
+
+
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-sm text-gray-600">Welcome back, {user?.name}</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {/* Welcome Card - Only show when no farms */}
+          {userFarms.length === 0 && (
+            <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Welcome to AgriPlatform
+                </h3>
+                <div className="mt-2 max-w-xl text-sm text-gray-500">
+                  <p>
+                    Get started by creating your first farm or explore the features available to you.
+                  </p>
+                </div>
+                <div className="mt-5">
+                  <Link
+                    to="/create-farm"
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Farm
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <MapPin className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Total Farms
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">{userFarms.length}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="h-6 w-6 bg-green-100 rounded-full flex items-center justify-center">
+                      <div className="h-3 w-3 bg-green-500 rounded-full"></div>
+                    </div>
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Total Area
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">{totalArea.toFixed(1)} hectares</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Sprout className="h-6 w-6 text-green-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Active Crops
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">{activeCrops}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Farms List or Empty State */}
+          <div className="mt-8">
+            {userFarms.length > 0 ? (
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    Your Farms
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Existing Farm Cards */}
+                    {userFarms.map((farm) => (
+                      <div key={farm.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-4">
+                          <h4 className="text-lg font-semibold text-gray-900">{farm.name}</h4>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {farm.crop}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2 text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span>Area:</span>
+                            <span className="font-medium">{farm.area} hectares</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Planting Date:</span>
+                            <span className="font-medium">
+                              {new Date(farm.plantingDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Harvest Date:</span>
+                            <span className="font-medium">
+                              {new Date(farm.harvestDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        {farm.description && (
+                          <p className="mt-3 text-sm text-gray-500 line-clamp-2">
+                            {farm.description}
+                          </p>
+                        )}
+
+                        <div className="mt-4 flex justify-between items-center">
+                          <span className="text-xs text-gray-400">
+                            Created {new Date(farm.createdAt).toLocaleDateString()}
+                          </span>
+                          <Link 
+                            to={`/farm/${farm.id}`}
+                            className="text-green-600 hover:text-green-700 text-sm font-medium"
+                          >
+                            View Details →
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add New Farm Card */}
+                    <Link
+                      to="/create-farm"
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-green-400 hover:bg-green-50 transition-colors flex flex-col items-center justify-center min-h-[200px] group"
+                    >
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
+                        <Plus className="w-6 h-6 text-green-600" />
+                      </div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">Add New Farm</h4>
+                      <p className="text-sm text-gray-500 text-center">
+                        Create another farm to expand your agricultural portfolio
+                      </p>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white shadow rounded-lg">
+                <div className="text-center py-12">
+                  <MapPin className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No farms yet</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Get started by creating your first farm.
+                  </p>
+                  <div className="mt-6">
+                    <Link
+                      to="/create-farm"
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Farm
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
