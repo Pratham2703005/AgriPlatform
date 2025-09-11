@@ -1,23 +1,32 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { FarmAPI } from '../services/farmApi';
 import type { Farm, FarmState, FarmFormData } from '../types/farm';
 
 interface FarmStore extends FarmState {
+  // API-based actions
+  fetchFarms: (page?: number, limit?: number) => Promise<void>;
   addFarm: (
     farmData: FarmFormData,
     coordinates: number[][],
-    area: number,
-    userId?: string
-  ) => void;
-  updateFarm: (id: string, farmData: Partial<Farm>) => void;
-  deleteFarm: (id: string) => void;
+    area: number
+  ) => Promise<void>;
+  updateFarm: (id: string, farmData: Partial<Farm>) => Promise<void>;
+  deleteFarm: (id: string) => Promise<void>;
+  
+  // Local state management
   getFarmById: (id: string) => Farm | undefined;
-  getFarmsByUserId: (userId: string) => Farm[];
-  getAllFarms: () => Farm[]; // For admin use
   setCurrentFarm: (farm: Farm | null) => void;
   clearError: () => void;
-  clearUserData: () => void; // Clear UI state only
-  resetAllData: () => void; // Complete reset for testing/admin
+  clearUserData: () => void;
+  
+  // Pagination
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  setPagination: (pagination: Partial<FarmStore['pagination']>) => void;
 }
 
 // Utility function to calculate polygon area in hectares
@@ -69,169 +78,180 @@ const calculatePolygonArea = (coordinates: number[][]): number => {
   return Math.round(hectares * 100) / 100; // round to 2 decimal places
 };
 
-export const useFarmStore = create<FarmStore>()(
-  persist(
-    (set, get) => ({
+export const useFarmStore = create<FarmStore>((set, get) => ({
+  // State
+  farms: [],
+  currentFarm: null,
+  loading: false,
+  error: null,
+  pagination: {
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  },
+
+  // API Actions
+  fetchFarms: async (page = 1, limit = 10) => {
+    try {
+      set({ loading: true, error: null });
+      
+      const response = await FarmAPI.getFarms(page, limit);
+      
+      if (response.code === 1) {
+        const { farms, pagination } = response.result;
+        
+        // Transform API data to frontend format
+        const transformedFarms = farms.map(FarmAPI.transformFromApiFormat);
+        
+        set({
+          farms: transformedFarms,
+          pagination,
+          loading: false,
+        });
+      } else {
+        set({
+          error: response.message || 'Failed to fetch farms',
+          loading: false,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching farms:', error);
+      set({
+        error: error.message || 'Failed to fetch farms',
+        loading: false,
+      });
+    }
+  },
+
+  addFarm: async (
+    farmData: FarmFormData,
+    coordinates: number[][],
+    area: number
+  ) => {
+    try {
+      set({ loading: true, error: null });
+      
+      const createRequest = FarmAPI.transformToApiFormat({
+        ...farmData,
+        coordinates,
+        area: area || calculatePolygonArea(coordinates),
+      });
+      console.log("createRequest:", createRequest);
+
+      const response = await FarmAPI.createFarm(createRequest);
+      
+      if (response.code === 1) {
+        const newFarm = FarmAPI.transformFromApiFormat(response.result);
+        
+        set(state => ({
+          farms: [...state.farms, newFarm],
+          loading: false,
+        }));
+      } else {
+        set({
+          error: response.message || 'Failed to create farm',
+          loading: false,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error creating farm:', error);
+      set({
+        error: error.message || 'Failed to create farm',
+        loading: false,
+      });
+    }
+  },
+
+  updateFarm: async (id: string, farmData: Partial<Farm>) => {
+    try {
+      set({ loading: true, error: null });
+
+      const response = await FarmAPI.updateFarm(id, farmData);
+
+      if (response.code === 1) {
+        const updatedFarm = FarmAPI.transformFromApiFormat(response.result);
+        
+        set(state => ({
+          farms: state.farms.map(farm =>
+            farm.id === id ? updatedFarm : farm
+          ),
+          currentFarm: state.currentFarm?.id === id ? updatedFarm : state.currentFarm,
+          loading: false,
+        }));
+      } else {
+        set({
+          error: response.message || 'Failed to update farm',
+          loading: false,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating farm:', error);
+      set({
+        error: error.message || 'Failed to update farm',
+        loading: false,
+      });
+    }
+  },
+
+  deleteFarm: async (id: string) => {
+    try {
+      set({ loading: true, error: null });
+
+      const response = await FarmAPI.deleteFarm(id);
+
+      if (response.code === 1) {
+        set(state => ({
+          farms: state.farms.filter(farm => farm.id !== id),
+          currentFarm: state.currentFarm?.id === id ? null : state.currentFarm,
+          loading: false,
+        }));
+      } else {
+        set({
+          error: response.message || 'Failed to delete farm',
+          loading: false,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error deleting farm:', error);
+      set({
+        error: error.message || 'Failed to delete farm',
+        loading: false,
+      });
+    }
+  },
+
+  // Local state management
+  getFarmById: (id: string) => {
+    return get().farms.find(farm => farm.id === id);
+  },
+
+  setCurrentFarm: (farm: Farm | null) => {
+    set({ currentFarm: farm });
+  },
+
+  clearError: () => {
+    set({ error: null });
+  },
+
+  clearUserData: () => {
+    set({
       farms: [],
       currentFarm: null,
       loading: false,
       error: null,
-
-      addFarm: (
-        farmData: FarmFormData,
-        coordinates: number[][],
-        area: number,
-        userId?: string
-      ) => {
-        try {
-          set({ loading: true, error: null });
-
-          // Get current user ID from localStorage auth_user or use provided userId
-          let currentUserId = userId;
-          if (!currentUserId) {
-            try {
-              const authUser = localStorage.getItem('auth_user');
-              if (authUser) {
-                const user = JSON.parse(authUser);
-                currentUserId = user.id;
-              }
-            } catch (e) {
-              console.error('Error parsing auth user:', e);
-            }
-          }
-
-          // Fallback to anonymous if no user found
-          currentUserId = currentUserId || 'anonymous';
-
-          const newFarm: Farm = {
-            id: crypto.randomUUID(),
-            ...farmData,
-            coordinates,
-            area: area || calculatePolygonArea(coordinates),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            userId: currentUserId,
-          };
-
-          console.log('Adding new farm:', newFarm);
-          console.log('Current user ID:', currentUserId);
-
-          set(state => {
-            const updatedFarms = [...state.farms, newFarm];
-            console.log('Updated farms array:', updatedFarms);
-            return {
-              farms: updatedFarms,
-              loading: false,
-            };
-          });
-        } catch (error) {
-          console.error('Error adding farm:', error);
-          set({
-            error:
-              error instanceof Error ? error.message : 'Failed to add farm',
-            loading: false,
-          });
-        }
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
       },
+    });
+  },
 
-      updateFarm: (id: string, farmData: Partial<Farm>) => {
-        try {
-          set({ loading: true, error: null });
-
-          set(state => ({
-            farms: state.farms.map(farm =>
-              farm.id === id
-                ? { ...farm, ...farmData, updatedAt: new Date().toISOString() }
-                : farm
-            ),
-            loading: false,
-          }));
-        } catch (error) {
-          set({
-            error:
-              error instanceof Error ? error.message : 'Failed to update farm',
-            loading: false,
-          });
-        }
-      },
-
-      deleteFarm: (id: string) => {
-        try {
-          set({ loading: true, error: null });
-
-          set(state => ({
-            farms: state.farms.filter(farm => farm.id !== id),
-            currentFarm:
-              state.currentFarm?.id === id ? null : state.currentFarm,
-            loading: false,
-          }));
-        } catch (error) {
-          set({
-            error:
-              error instanceof Error ? error.message : 'Failed to delete farm',
-            loading: false,
-          });
-        }
-      },
-
-      getFarmById: (id: string) => {
-        return get().farms.find(farm => farm.id === id);
-      },
-
-      getFarmsByUserId: (userId: string) => {
-        return get().farms.filter(farm => farm.userId === userId);
-      },
-
-      getAllFarms: () => {
-        return get().farms;
-      },
-
-      setCurrentFarm: (farm: Farm | null) => {
-        set({ currentFarm: farm });
-      },
-
-      clearError: () => {
-        set({ error: null });
-      },
-
-      clearUserData: () => {
-        // This should only be used for complete app reset, not logout
-        // Only clear UI state, farms persist across sessions
-        set({
-          currentFarm: null,
-          loading: false,
-          error: null,
-        });
-      },
-
-      // Add a method to completely reset all data (for testing or admin purposes)
-      resetAllData: () => {
-        set({
-          farms: [],
-          currentFarm: null,
-          loading: false,
-          error: null,
-        });
-      },
-    }),
-    {
-      name: 'agri-farms-v1',
-      partialize: state => ({
-        farms: state.farms,
-      }),
-      version: 1,
-      migrate: (persistedState: any, version: number) => {
-        // Handle migration from old storage format
-        if (version === 0) {
-          return {
-            farms: persistedState?.farms || [],
-            currentFarm: null,
-            loading: false,
-            error: null,
-          };
-        }
-        return persistedState;
-      },
-    }
-  )
-);
+  setPagination: (pagination: Partial<FarmStore['pagination']>) => {
+    set(state => ({
+      pagination: { ...state.pagination, ...pagination },
+    }));
+  },
+}));

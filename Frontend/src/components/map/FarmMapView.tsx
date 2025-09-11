@@ -31,7 +31,8 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
   // Convert coordinates to Leaflet format [lat, lng]
-  const leafletCoords: [number, number][] = coordinates
+  console.log("COORDINATES : ,", coordinates.coordinates[0])
+  const leafletCoords: [number, number][] = coordinates.coordinates[0]
     .filter(coord => coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
     .map(coord => [coord[1] as number, coord[0] as number]);
 

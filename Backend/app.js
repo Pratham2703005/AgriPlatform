@@ -1,20 +1,20 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const userRoutes = require("./routes/user.route.js");
+const farmRoutes = require("./routes/farm.route.js");
 
 const app = express();
 
 // Middleware setup
 dotenv.config();
-app.use(cors());
+app.use(cors({credentials: true, origin:"http://localhost:3000" }));
 app.use(express.json());
 app.use(cookieParser());
 
 // Routes
-
 app.use("/user", userRoutes);
+app.use("/farms", farmRoutes);
 
 module.exports = app;

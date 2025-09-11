@@ -74,7 +74,7 @@ export const env: EnvironmentConfig = {
   ) as EnvironmentConfig['ENVIRONMENT'],
 
   // API Configuration
-  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'http://localhost:3001/api'),
+  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'http://localhost:8000'),
   API_TIMEOUT: getNumberEnvVar('VITE_API_TIMEOUT', 10000),
 
   // Map Configuration

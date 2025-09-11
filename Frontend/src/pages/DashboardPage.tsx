@@ -1,14 +1,29 @@
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarmStore } from '../stores/farmStore';
 import { LogOut, Plus, MapPin, Sprout } from 'lucide-react';
 
 export default function UserDashboard() {
   const { user, logout } = useAuth();
-  const { getFarmsByUserId, clearUserData } = useFarmStore();
+  const { farms, loading, error, fetchFarms, clearError } = useFarmStore();
 
-  // Get only current user's farms
-  const userFarms = user ? getFarmsByUserId(user.id) : [];
+  // Fetch farms when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      fetchFarms();
+    }
+  }, [user, fetchFarms]);
+
+  // Clear any errors when component unmounts
+  useEffect(() => {
+    return () => {
+      clearError();
+    };
+  }, [clearError]);
+
+  // All farms belong to the current user (backend filters by user)
+  const userFarms = farms;
 
   const handleLogout = () => {
     logout();
@@ -27,7 +42,7 @@ export default function UserDashboard() {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-sm text-gray-600">Welcome back, {user?.name}</p>
+              <p className="text-sm text-gray-600">Welcome back, {user?.fullName}</p>
             </div>
             <div className="flex items-center space-x-4">
               <button
@@ -45,8 +60,43 @@ export default function UserDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Welcome Card - Only show when no farms */}
-          {userFarms.length === 0 && (
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    Error loading farms
+                  </h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    <p>{error}</p>
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      onClick={() => fetchFarms()}
+                      className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="bg-white shadow rounded-lg mb-6">
+              <div className="px-4 py-5 sm:p-6">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                  <span className="ml-3 text-sm text-gray-600">Loading your farms...</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Welcome Card - Only show when no farms and not loading */}
+          {!loading && userFarms.length === 0 && (
             <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
               <div className="px-4 py-5 sm:p-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -131,7 +181,7 @@ export default function UserDashboard() {
 
           {/* Farms List or Empty State */}
           <div className="mt-8">
-            {userFarms.length > 0 ? (
+            {!loading && userFarms.length > 0 ? (
               <div className="bg-white shadow rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
                   <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
@@ -203,7 +253,7 @@ export default function UserDashboard() {
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : !loading ? (
               <div className="bg-white shadow rounded-lg">
                 <div className="text-center py-12">
                   <MapPin className="mx-auto h-12 w-12 text-gray-400" />
@@ -222,7 +272,7 @@ export default function UserDashboard() {
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </main>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../contexts/AuthContext';
 import { useFarmStore } from '../stores/farmStore';
 import type { FarmFormData } from '../types/farm';
 import { CROP_OPTIONS } from '../types/farm';
@@ -9,7 +9,7 @@ import { LeafletMap } from '../components/map/LeafletMap';
 
 export const CreateFarm: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const { addFarm, loading, error } = useFarmStore();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
@@ -24,14 +24,14 @@ export const CreateFarm: React.FC = () => {
 
   const plantingDate = watch('plantingDate');
 
-  const onSubmit = (data: FarmFormData) => {
+  const onSubmit = async (data: FarmFormData) => {
     if (coordinates.length === 0) {
       alert('Please draw your farm boundary on the map');
       return;
     }
 
-    // Pass the current user's ID when creating the farm
-    addFarm(data, coordinates, area, user?.id);
+    // Backend handles user ID from authentication
+    await addFarm(data, coordinates, area);
     navigate('/dashboard');
   };
 

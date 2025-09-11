@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarmStore } from '../stores/farmStore';
 import { FarmMapView } from '../components/map/FarmMapView';
-import { ArrowLeft, MapPin, Calendar, Sprout, Edit, Trash2, Download, FileText, Map, Satellite } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Sprout, Edit, Trash2, Download, FileText, Map } from 'lucide-react';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
@@ -31,9 +31,9 @@ export default function FarmDetail() {
   }
   console.log("FARM : ", farm);
   // Check if user has permission to view this farm
-  const canView = user?.role === 'admin' || farm.userId === user?.id;
-  const canEdit = user?.role === 'admin' || farm.userId === user?.id;
-
+  const canView = user?.role === 'admin' || farm.userId._id === user?.id;
+  const canEdit = user?.role === 'admin' || farm.userId._id === user?.id;
+  console.log("CAN EDIT : ", canEdit, "CAN View: ", canView) 
   if (!canView) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -202,7 +202,7 @@ export default function FarmDetail() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {farm.coordinates.map((coord, index) => (
+                        {farm.coordinates.coordinates[0].map((coord, index) => (
                           <tr key={index}>
                             <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                               {index + 1}

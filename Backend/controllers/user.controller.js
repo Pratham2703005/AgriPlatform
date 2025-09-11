@@ -8,7 +8,6 @@ const ResponseEntity = require("../utils/ResponseEntity.js");
 // register controller
 
 const register = async (req, res) => {
-  console.log("JWT_SECRET:", process.env.JWT_SECRET);
 
   const req_body = req.body;
 
@@ -45,21 +44,30 @@ const register = async (req, res) => {
   };
 
   try {
-    const token = generateJWT({ email: user_req.email }); //jwt.sign({username: user_req.username}, process.env.JWT_SECRET, {expiresIn: "2d"})
     const user = await User.create(user_req);
+    const token = await generateJWT({ email: user.email });
 
-    const created_user = await User.findOne({ email: user.email }).select(
-      "-password"
-    );
+    // Return user data without password
+    const userData = {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      role: user.role
+    };
 
     const response = new ResponseEntity(
       1,
       "User Created Successfully",
-      created_user
+      {
+        token,
+        user: userData
+      }
     );
     res.cookie("token", token).status(201).json(response);
   } catch (err) {
-    console.log("Some Problem Occured While Creating the User");
+    console.log("Some Problem Occured While Creating the User:", err);
     const response = new ResponseEntity(0, "Error While Creating the User", {});
     res.status(500).json(response);
   }
@@ -69,7 +77,7 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   const req_body = req.body;
-
+  console.log("BODY", req.body);
   if (!req_body.email) {
     const response = new ResponseEntity(0, "Enter the E-mail", {});
     return res.status(400).json(response);
@@ -100,7 +108,21 @@ const login = async (req, res) => {
       expiresIn: "2d",
     });
 
-    const response = new ResponseEntity(1, "Logged in Successfully", {});
+    // Return user data without password
+    const userData = {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      role: user.role
+    };
+
+    const response = new ResponseEntity(1, "Logged in Successfully", {
+      token,
+      user: userData
+    });
+    
     res.cookie("token", token).status(200).json(response);
   } catch (error) {
     const response = new ResponseEntity(0, "Some Error while Logging in", {});
@@ -125,7 +147,14 @@ const logout = (req, res) => {
 
 const protected = (req, res) => {
   try {
-    const response = new ResponseEntity(1, "You are in a Protected Route", {});
+    const response = new ResponseEntity(1, "You are in a Protected Route", {
+      user: {
+        id: req.user._id,
+        fullName: req.user.fullName,
+        email: req.user.email,
+        role: req.user.role
+      }
+    });
     res.status(200).json(response);
   } catch (error) {
     const response = new ResponseEntity(
@@ -133,6 +162,7 @@ const protected = (req, res) => {
       "Some Error while Accessing the Protected Route",
       {}
     );
+    res.status(500).json(response);
   }
 };
 
