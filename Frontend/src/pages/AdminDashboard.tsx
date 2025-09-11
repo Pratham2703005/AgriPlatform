@@ -29,7 +29,10 @@ export default function AdminDashboard() {
     const totalFarms = farms.length;
     const totalArea = farms.reduce((sum, farm) => sum + farm.area, 0);
     const activeCrops = new Set(farms.map(farm => farm.crop)).size;
-    const myFarms = farms.filter(f => f.userId === user?.id);
+        const myFarms = farms.filter(f =>
+            f.userId === user?.id ||
+            (f.userId && typeof f.userId === 'object' && '_id' in f.userId && (f.userId as any)._id === user?.id)
+        );
 
     if (loading) {
         return (

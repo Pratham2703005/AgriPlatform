@@ -10,7 +10,7 @@ import { LeafletMap } from '../components/map/LeafletMap';
 export const CreateFarm: React.FC = () => {
   const navigate = useNavigate();
   // const { user } = useAuth();
-  const { addFarm, loading, error } = useFarmStore();
+  const { addFarm, fetchFarms, loading, error } = useFarmStore();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
   const [showMap, setShowMap] = useState(false);
@@ -30,9 +30,10 @@ export const CreateFarm: React.FC = () => {
       return;
     }
 
-    // Backend handles user ID from authentication
-    await addFarm(data, coordinates, area);
-    navigate('/dashboard');
+  // Backend handles user ID from authentication
+  await addFarm(data, coordinates, area);
+  await fetchFarms();
+  navigate('/dashboard');
   };
 
   const handlePolygonComplete = (coords: number[][], calculatedArea: number) => {
