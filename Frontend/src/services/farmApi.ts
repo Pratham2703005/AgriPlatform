@@ -83,7 +83,15 @@ export class FarmAPI {
    */
 static async createFarm(farmData: CreateFarmRequest): Promise<FarmResponse> {
   try {
-    const authConfig = AuthAPI.getAuthConfig();
+    const authConfig = {
+      ...AuthAPI.getAuthConfig(),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${AuthAPI.getToken()}` // agar tum token use kar rahe ho
+      },
+      withCredentials: true
+    };
+
     const response = await post<FarmResponse>("/farms", farmData, authConfig);
     return response;
   } catch (error) {
