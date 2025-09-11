@@ -101,6 +101,7 @@ static async createFarm(farmData: CreateFarmRequest): Promise<FarmResponse> {
 }
 
 
+
   /**
    * Update existing farm
    */
@@ -155,7 +156,9 @@ static async createFarm(farmData: CreateFarmRequest): Promise<FarmResponse> {
       plantingDate: apiData.plantingDate,
       harvestDate: apiData.harvestDate,
       description: apiData.description,
-      coordinates: apiData.coordinates,
+      coordinates: Array.isArray(apiData.coordinates?.coordinates)
+        ? apiData.coordinates.coordinates[0]
+        : [],
       area: apiData.area,
       createdAt: apiData.createdAt,
       updatedAt: apiData.updatedAt,

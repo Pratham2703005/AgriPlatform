@@ -31,8 +31,9 @@ export default function FarmDetail() {
   }
   console.log("FARM : ", farm);
   // Check if user has permission to view this farm
-  const canView = user?.role === 'admin' || farm.userId._id === user?.id;
-  const canEdit = user?.role === 'admin' || farm.userId._id === user?.id;
+  // userId is a string, not an object
+  const canView = user?.role === 'admin' || farm.userId === user?.id;
+  const canEdit = user?.role === 'admin' || farm.userId === user?.id;
   console.log("CAN EDIT : ", canEdit, "CAN View: ", canView) 
   if (!canView) {
     return (
@@ -202,18 +203,21 @@ export default function FarmDetail() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {farm.coordinates.coordinates[0].map((coord, index) => (
-                          <tr key={index}>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                              {index + 1}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                              {coord[0]?.toFixed(6)}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                              {coord[1]?.toFixed(6)}
-                            </td>
-                          </tr>
+                        {/* coordinates is number[][], not { coordinates: ... } */}
+                        {Array.isArray(farm.coordinates) && Array.isArray(farm.coordinates[0]) && farm.coordinates[0].map((coord, index) => (
+                          Array.isArray(coord) ? (
+                            <tr key={index}>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {index + 1}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {typeof coord[0] === 'number' ? coord[0].toFixed(6) : ''}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {typeof coord[1] === 'number' ? coord[1].toFixed(6) : ''}
+                              </td>
+                            </tr>
+                          ) : null
                         ))}
                       </tbody>
                     </table>

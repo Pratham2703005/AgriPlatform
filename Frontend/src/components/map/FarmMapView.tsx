@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, ScaleControl, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { Layers, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
 });
 
 interface FarmMapViewProps {
-  coordinates: number[][];
+  coordinates: number[][]; // Array of [lng, lat] pairs
   farmName: string;
   height?: string;
   className?: string;
@@ -31,10 +31,12 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
   // Convert coordinates to Leaflet format [lat, lng]
-  console.log("COORDINATES : ,", coordinates.coordinates[0])
-  const leafletCoords: [number, number][] = coordinates.coordinates[0]
-    .filter(coord => coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
-    .map(coord => [coord[1] as number, coord[0] as number]);
+  // coordinates: number[][] is expected as [lng, lat] pairs
+  const leafletCoords: [number, number][] = Array.isArray(coordinates)
+    ? coordinates
+        .filter((coord): coord is [number, number] => Array.isArray(coord) && coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
+        .map((coord) => [coord[1], coord[0]])
+    : [];
 
   // Calculate center of the polygon
   const getPolygonCenter = (): [number, number] => {
@@ -42,9 +44,8 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
       return [28.6139, 77.2090]; // Default center
     }
 
-    const latSum = leafletCoords.reduce((sum, coord) => sum + coord[0], 0);
-    const lngSum = leafletCoords.reduce((sum, coord) => sum + coord[1], 0);
-    
+    const latSum = leafletCoords.reduce((sum: number, coord: [number, number]) => sum + coord[0], 0);
+    const lngSum = leafletCoords.reduce((sum: number, coord: [number, number]) => sum + coord[1], 0);
     return [latSum / leafletCoords.length, lngSum / leafletCoords.length];
   };
 
@@ -52,9 +53,8 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
   const getZoomLevel = (): number => {
     if (leafletCoords.length === 0) return 10;
 
-    const lats = leafletCoords.map(coord => coord[0]);
-    const lngs = leafletCoords.map(coord => coord[1]);
-    
+    const lats = leafletCoords.map((coord: [number, number]) => coord[0]);
+    const lngs = leafletCoords.map((coord: [number, number]) => coord[1]);
     const latRange = Math.max(...lats) - Math.min(...lats);
     const lngRange = Math.max(...lngs) - Math.min(...lngs);
     const maxRange = Math.max(latRange, lngRange);
