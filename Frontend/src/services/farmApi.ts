@@ -121,16 +121,53 @@ static async createFarm(farmData: CreateFarmRequest): Promise<FarmResponse> {
   /**
    * Update existing farm
    */
-  static async updateFarm(id: string, farmData: UpdateFarmRequest): Promise<FarmResponse> {
-    try {
-      const authConfig = AuthAPI.getAuthConfig();
-      const response = await put<FarmResponse>(`/farms/${id}`, farmData, authConfig);
-      return response;
-    } catch (error) {
-      console.error('Error updating farm:', error);
-      throw error;
+  /**
+ * Update existing farm
+ */
+static async updateFarm(id: string, farmData: UpdateFarmRequest): Promise<FarmResponse> {
+  try {
+    const authConfig = {
+      ...AuthAPI.getAuthConfig(),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${AuthAPI.getToken()}`
+      },
+      withCredentials: true
+    };
+
+    // Format coordinates properly for the backend if they exist
+    let formattedData = { ...farmData };
+
+    if (formattedData.coordinates && formattedData.coordinates.length > 0) {
+      // Ensure the polygon is closed (first point equals last point)
+      const coords = [...formattedData.coordinates];
+      
+      // Check if the polygon is not already closed
+      const firstPoint = coords[0];
+      const lastPoint = coords[coords.length - 1];
+      
+      if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
+        // Add the first point again to close the loop
+        coords.push([...firstPoint]);
+      }
+      
+      formattedData = {
+        ...formattedData,
+        coordinates: {
+          type: "Polygon",
+          coordinates: [coords]
+        }
+      };
     }
+
+    const response = await put<FarmResponse>(`/farms/${id}`, formattedData, authConfig);
+    return response;
+  } catch (error) {
+    console.error("Error updating farm:", error);
+    throw error;
   }
+}
+
 
   /**
    * Delete farm

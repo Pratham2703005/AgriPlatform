@@ -253,7 +253,12 @@ export const useFarmStore = create<FarmStore>((set, get) => ({
 
   // Local state management
   getFarmById: (id: string) => {
-    return get().farms.find(farm => farm.id === id);
+    // First check in user's farms
+    const userFarm = get().farms.find(farm => farm.id === id);
+    if (userFarm) return userFarm;
+    
+    // If not found, check in all farms (for admin)
+    return get().allFarms.find(farm => farm.id === id);
   },
 
   setCurrentFarm: (farm: Farm | null) => {

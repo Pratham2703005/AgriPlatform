@@ -12,10 +12,17 @@ export default function EditFarm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getFarmById, updateFarm, loading, error } = useFarmStore();
+  const { getFarmById, updateFarm, fetchFarms, loading, error } = useFarmStore();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
   const [showMap, setShowMap] = useState(false);
+  
+  // Fetch farms when component mounts to ensure data is available on page reload
+  useEffect(() => {
+    if (user && id) {
+      fetchFarms();
+    }
+  }, [user, id, fetchFarms]);
 
   const farm = id ? getFarmById(id) : null;
 
@@ -30,15 +37,22 @@ export default function EditFarm() {
   const plantingDate = watch('plantingDate');
 
   // Check permissions
-  const canEdit = user?.role === 'admin' || farm?.userId === user?.id;
+  const canEdit = user?.role === 'admin' || farm?.userId?._id === user?.id;
 
   useEffect(() => {
     if (farm) {
       // Populate form with existing farm data
       setValue('name', farm.name);
       setValue('crop', farm.crop);
-      setValue('plantingDate', farm.plantingDate);
-      setValue('harvestDate', farm.harvestDate);
+      
+      // Format dates properly for the date input (YYYY-MM-DD)
+      const formatDateForInput = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0];
+      };
+      
+      setValue('plantingDate', formatDateForInput(farm.plantingDate));
+      setValue('harvestDate', formatDateForInput(farm.harvestDate));
       setValue('description', farm.description || '');
       
       // Set coordinates and area
@@ -47,12 +61,24 @@ export default function EditFarm() {
     }
   }, [farm, setValue]);
 
-  if (!farm) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading farm details...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Only show Farm Not Found after loading is complete
+  if (!farm && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Farm Not Found</h2>
-          <p className="text-gray-600 mb-6">The farm you're trying to edit doesn't exist or has been removed.</p>
+          <p className="text-gray-600 mb-6">The farm you're looking for doesn't exist or has been removed.</p>
           <Link
             to="/dashboard"
             className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -83,19 +109,25 @@ export default function EditFarm() {
     );
   }
 
-  const onSubmit = (data: FarmFormData) => {
+  const onSubmit = async (data: FarmFormData) => {
     if (coordinates.length === 0) {
       alert('Please draw your farm boundary on the map');
       return;
     }
 
-    updateFarm(farm.id, {
-      ...data,
-      coordinates,
-      area
-    });
-    
-    navigate(`/farm/${farm.id}`);
+    try {
+      await updateFarm(farm.id, {
+        ...data,
+        coordinates,
+        area
+      });
+      
+      // Only navigate after the update is complete
+      navigate(`/farm/${farm.id}`);
+    } catch (error) {
+      console.error('Error updating farm:', error);
+      // Error is already handled by the store
+    }
   };
 
   const handlePolygonComplete = (coords: number[][], calculatedArea: number) => {

@@ -166,4 +166,67 @@ const protected = (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, protected };
+// Get all users (admin only)
+const getAllUsers = async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      const response = new ResponseEntity(0, "Access denied. Admin only.", {});
+      return res.status(403).json(response);
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const users = await User.find({}, { hashedPassword: 0 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await User.countDocuments();
+    const totalPages = Math.ceil(total / limit);
+
+    const response = new ResponseEntity(1, "Users fetched successfully", {
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
+      }
+    });
+    res.status(200).json(response);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    const response = new ResponseEntity(0, "Error fetching users", {});
+    res.status(500).json(response);
+  }
+};
+
+// Get user stats (admin only)
+const getUserStats = async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      const response = new ResponseEntity(0, "Access denied. Admin only.", {});
+      return res.status(403).json(response);
+    }
+
+    const totalUsers = await User.countDocuments();
+    const totalFarmers = await User.countDocuments({ role: 'farmer' });
+    const totalAdmins = await User.countDocuments({ role: 'admin' });
+
+    const response = new ResponseEntity(1, "User stats fetched successfully", {
+      totalUsers,
+      totalFarmers,
+      totalAdmins
+    });
+    res.status(200).json(response);
+  } catch (error) {
+    console.error("Error fetching user stats:", error);
+    const response = new ResponseEntity(0, "Error fetching user stats", {});
+    res.status(500).json(response);
+  }
+};
+
+module.exports = { register, login, logout, protected, getAllUsers, getUserStats };

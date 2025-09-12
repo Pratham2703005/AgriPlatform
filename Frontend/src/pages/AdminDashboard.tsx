@@ -1,24 +1,31 @@
 import { useEffect } from 'react';
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarmStore } from '../stores/farmStore';
-import { LogOut, Users, MapPin, Sprout, BarChart3, Settings, Plus } from 'lucide-react';
+import { useUserStore } from '../stores/userStore';
+import { LogOut, Users, MapPin, Sprout, BarChart3, Settings, Plus, Mail, Phone, Home } from 'lucide-react';
 
 export default function AdminDashboard() {
     const [allFarmsPage, setAllFarmsPage] = useState(1);
+    const [usersPage, setUsersPage] = useState(1);
     const allFarmsSectionRef = useRef<HTMLDivElement>(null);
+    const usersSectionRef = useRef<HTMLDivElement>(null);
     const allFarmsLimit = 10;
+    const usersLimit = 10;
     const { user, logout } = useAuth();
-    const { farms, allFarms, loading, error, fetchFarms, fetchAllFarms, clearError } = useFarmStore();
+    const { farms, allFarms, loading: farmsLoading, error: farmsError, fetchFarms, fetchAllFarms, clearError: clearFarmsError } = useFarmStore();
+    const { users, userStats, loading: usersLoading, error: usersError, fetchUsers, fetchUserStats, clearError: clearUsersError } = useUserStore();
 
-    // Fetch farms when component mounts
+    // Fetch farms and users when component mounts
     useEffect(() => {
         if (user) {
             fetchFarms(); // For My Farms
             fetchAllFarms(allFarmsPage, allFarmsLimit); // For All System Farms, paginated
+            fetchUserStats(); // Get user statistics
+            fetchUsers(usersPage, usersLimit); // Get users, paginated
         }
-    }, [user, fetchFarms, fetchAllFarms, allFarmsPage]);
+    }, [user, fetchFarms, fetchAllFarms, fetchUserStats, fetchUsers, allFarmsPage, usersPage]);
 
     // Scroll All System Farms section into view when page changes
     const lastPageRef = useRef(allFarmsPage);
@@ -38,9 +45,10 @@ export default function AdminDashboard() {
     // Clear any errors when component unmounts
     useEffect(() => {
         return () => {
-            clearError();
+            clearFarmsError();
+            clearUsersError();
         };
-    }, [clearError]);
+    }, [clearFarmsError, clearUsersError]);
 
     const handleLogout = () => {
         logout();
@@ -54,7 +62,7 @@ export default function AdminDashboard() {
             (f.userId && typeof f.userId === 'object' && '_id' in f.userId && (f.userId as any)._id === user?.id)
         );
 
-    if (loading) {
+    if (farmsLoading && usersLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="flex flex-col items-center space-y-4">
@@ -96,7 +104,7 @@ export default function AdminDashboard() {
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
                     {/* Error State */}
-                    {error && (
+                    {(farmsError || usersError) && (
                         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
                             <div className="flex">
                                 <div className="ml-3">
@@ -104,15 +112,28 @@ export default function AdminDashboard() {
                                         Error loading admin data
                                     </h3>
                                     <div className="mt-2 text-sm text-red-700">
-                                        <p>{error}</p>
+                                        <p>{farmsError || usersError}</p>
                                     </div>
-                                    <div className="mt-4">
-                                        <button
-                                            onClick={() => fetchFarms()}
-                                            className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
-                                        >
-                                            Try Again
-                                        </button>
+                                    <div className="mt-4 flex space-x-3">
+                                        {farmsError && (
+                                            <button
+                                                onClick={() => fetchFarms()}
+                                                className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
+                                            >
+                                                Retry Farms
+                                            </button>
+                                        )}
+                                        {usersError && (
+                                            <button
+                                                onClick={() => {
+                                                    fetchUserStats();
+                                                    fetchUsers();
+                                                }}
+                                                className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
+                                            >
+                                                Retry Users
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -132,7 +153,9 @@ export default function AdminDashboard() {
                                             <dt className="text-sm font-medium text-gray-500 truncate">
                                                 Total Users
                                             </dt>
-                                            <dd className="text-lg font-medium text-gray-900">Coming Soon</dd>
+                                            <dd className="text-lg font-medium text-gray-900">
+                                                {userStats ? userStats.totalUsers : 'Loading...'}
+                                            </dd>
                                         </dl>
                                     </div>
                                 </div>
@@ -148,7 +171,7 @@ export default function AdminDashboard() {
                                     <div className="ml-5 w-0 flex-1">
                                         <dl>
                                             <dt className="text-sm font-medium text-gray-500 truncate">
-                                                Total Farms
+                                                Admin Farms
                                             </dt>
                                             <dd className="text-lg font-medium text-gray-900">{totalFarms}</dd>
                                         </dl>
@@ -166,7 +189,7 @@ export default function AdminDashboard() {
                                     <div className="ml-5 w-0 flex-1">
                                         <dl>
                                             <dt className="text-sm font-medium text-gray-500 truncate">
-                                                Total Area
+                                                Total Admin Area
                                             </dt>
                                             <dd className="text-lg font-medium text-gray-900">{totalArea.toFixed(1)} hectares</dd>
                                         </dl>
@@ -184,7 +207,7 @@ export default function AdminDashboard() {
                                     <div className="ml-5 w-0 flex-1">
                                         <dl>
                                             <dt className="text-sm font-medium text-gray-500 truncate">
-                                                Crop Types
+                                                Admin Crop Types
                                             </dt>
                                             <dd className="text-lg font-medium text-gray-900">{activeCrops}</dd>
                                         </dl>
@@ -193,26 +216,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     </div>
-
-                    {/* Users Management - Coming Soon */}
-                    <div className="mt-8">
-                        <div className="bg-white shadow rounded-lg">
-                            <div className="px-4 py-5 sm:p-6">
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                                    User Management
-                                </h3>
-                                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                                    <Users className="mx-auto h-12 w-12 text-gray-400" />
-                                    <h3 className="mt-2 text-sm font-medium text-gray-900">User Management Coming Soon</h3>
-                                    <p className="mt-1 text-sm text-gray-500">
-                                        User management features will be available in a future update.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Admin's Own Farms */}
+{/* Admin's Own Farms */}
                     <div className="mt-8">
                         <div className="bg-white shadow rounded-lg">
                             <div className="px-4 py-5 sm:p-6">
@@ -302,6 +306,127 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     </div>
+                    {/* Users Management */}
+                    <div className="mt-8" ref={usersSectionRef}>
+                        <div className="bg-white shadow rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                        User Management
+                                    </h3>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm text-gray-500">
+                                            {userStats && (
+                                                <>
+                                                    <span className="font-medium text-blue-600">{userStats.totalFarmers}</span> Farmers, 
+                                                    <span className="font-medium text-green-600">{userStats.totalAdmins}</span> Admins
+                                                </>
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {usersLoading ? (
+                                    <div className="text-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                        <p className="mt-2 text-sm text-gray-500">Loading users...</p>
+                                    </div>
+                                ) : users.length > 0 ? (
+                                    <>
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full divide-y divide-gray-200">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Name
+                                                        </th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Email
+                                                        </th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Role
+                                                        </th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Contact
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {users.map((user) => (
+                                                        <tr key={user._id}>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="flex items-center">
+                                                                    <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                                                        <span className="text-gray-500 font-medium">{user.fullName.charAt(0)}</span>
+                                                                    </div>
+                                                                    <div className="ml-4">
+                                                                        <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
+                                                                        <div className="text-sm text-gray-500">Joined {new Date(user.createdAt).toLocaleDateString()}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="flex items-center">
+                                                                    <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                                                                    <span className="text-sm text-gray-900">{user.email}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                <div className="flex flex-col space-y-1">
+                                                                    <div className="flex items-center">
+                                                                        <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                                                                        <span>{user.phone}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center">
+                                                                        <Home className="h-4 w-4 text-gray-400 mr-2" />
+                                                                        <span className="truncate max-w-xs">{user.address}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        {/* Pagination Controls */}
+                                        <div className="flex justify-center mt-4">
+                                            <button
+                                                className="px-4 py-2 mr-2 bg-gray-200 rounded disabled:opacity-50"
+                                                disabled={usersPage === 1}
+                                                onClick={() => setUsersPage(usersPage - 1)}
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="px-4 py-2">Page {usersPage}</span>
+                                            <button
+                                                className="px-4 py-2 ml-2 bg-gray-200 rounded disabled:opacity-50"
+                                                disabled={users.length < usersLimit}
+                                                onClick={() => setUsersPage(usersPage + 1)}
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                        <Users className="mx-auto h-12 w-12 text-gray-400" />
+                                        <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
+                                        <p className="mt-1 text-sm text-gray-500">
+                                            There are no users in the system yet.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    
 
                     {/* All System Farms */}
                     <div className="mt-8" ref={allFarmsSectionRef}>

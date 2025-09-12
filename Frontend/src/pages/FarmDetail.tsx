@@ -3,16 +3,38 @@ import { useAuth } from '../contexts/AuthContext';
 import { useFarmStore } from '../stores/farmStore';
 import { FarmMapView } from '../components/map/FarmMapView';
 import { ArrowLeft, MapPin, Calendar, Sprout, Edit, Trash2, Download, FileText, Map } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getFarmById, deleteFarm } = useFarmStore();
+  const { getFarmById, deleteFarm, fetchFarms, loading } = useFarmStore();
+
+  // Fetch farms when component mounts to ensure data is available on page reload
+  useEffect(() => {
+    if (user && id) {
+      fetchFarms();
+    }
+  }, [user, id, fetchFarms]);
 
   const farm = id ? getFarmById(id) : null;
-
-  if (!farm) {
+  console.log("FARM IN FarmDetail.tsx: ", farm);
+  
+  // Show loading indicator while farms are being fetched
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading farm details...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Only show Farm Not Found after loading is complete
+  if (!farm && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -30,10 +52,13 @@ export default function FarmDetail() {
     );
   }
   console.log("FARM : ", farm);
+
+  console.log("USER: ", user)
+
   // Check if user has permission to view this farm
   // userId is a string, not an object
-  const canView = user?.role === 'admin' || farm.userId === user?.id;
-  const canEdit = user?.role === 'admin' || farm.userId === user?.id;
+  const canView = user?.role === 'admin' || farm?.userId._id === user?.id;
+  const canEdit = user?.role === 'admin' || farm?.userId._id === user?.id;
   console.log("CAN EDIT : ", canEdit, "CAN View: ", canView) 
   if (!canView) {
     return (
@@ -54,8 +79,9 @@ export default function FarmDetail() {
   }
 
   const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete "${farm.name}"? This action cannot be undone.`)) {
-      deleteFarm(farm.id);
+    if (confirm(`Are you sure you want to delete "${farm?.name}"? This action cannot be undone.`)) {
+      deleteFarm(farm?.id || '');
+
       navigate('/dashboard');
     }
   };
@@ -74,7 +100,7 @@ export default function FarmDetail() {
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{farm.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{farm?.name}</h1>
                 <p className="text-sm text-gray-600">Farm Details</p>
               </div>
             </div>
@@ -114,31 +140,32 @@ export default function FarmDetail() {
                   <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Farm Name</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{farm.name}</dd>
+                      <dd className="mt-1 text-sm text-gray-900">{farm?.name}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Crop Type</dt>
                       <dd className="mt-1 flex items-center text-sm text-gray-900">
                         <Sprout className="h-4 w-4 mr-2 text-green-500" />
-                        {farm.crop}
+                        {farm?.crop}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Total Area</dt>
                       <dd className="mt-1 flex items-center text-sm text-gray-900">
                         <MapPin className="h-4 w-4 mr-2 text-blue-500" />
-                        {farm.area} hectares
+                        {farm?.area} hectares
                       </dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Boundary Points</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{farm.coordinates.length} points</dd>
+                      <dd className="mt-1 text-sm text-gray-900">{farm?.coordinates.length} points</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Planting Date</dt>
                       <dd className="mt-1 flex items-center text-sm text-gray-900">
                         <Calendar className="h-4 w-4 mr-2 text-green-500" />
-                        {new Date(farm.plantingDate).toLocaleDateString('en-US', {
+                        {new Date(farm?.plantingDate || 0).toLocaleDateString('en-US', {
+
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
@@ -149,14 +176,15 @@ export default function FarmDetail() {
                       <dt className="text-sm font-medium text-gray-500">Expected Harvest</dt>
                       <dd className="mt-1 flex items-center text-sm text-gray-900">
                         <Calendar className="h-4 w-4 mr-2 text-orange-500" />
-                        {new Date(farm.harvestDate).toLocaleDateString('en-US', {
+                        {new Date(farm?.harvestDate || 0).toLocaleDateString('en-US', {
+
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
                         })}
                       </dd>
                     </div>
-                    {farm.description && (
+                    {farm?.description && (
                       <div className="sm:col-span-2">
                         <dt className="text-sm font-medium text-gray-500">Description</dt>
                         <dd className="mt-1 text-sm text-gray-900">{farm.description}</dd>
@@ -173,8 +201,8 @@ export default function FarmDetail() {
                 </div>
                 <div className="p-6">
                   <FarmMapView
-                    coordinates={farm.coordinates}
-                    farmName={farm.name}
+                    coordinates={farm?.coordinates || [[]]}
+                    farmName={farm?.name || ''}
                     height="400px"
                     className="w-full"
                   />
@@ -203,23 +231,25 @@ export default function FarmDetail() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {/* coordinates is number[][], not { coordinates: ... } */}
-                        {Array.isArray(farm.coordinates) && Array.isArray(farm.coordinates[0]) && farm.coordinates[0].map((coord, index) => (
-                          Array.isArray(coord) ? (
-                            <tr key={index}>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                {index + 1}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                {typeof coord[0] === 'number' ? coord[0].toFixed(6) : ''}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                {typeof coord[1] === 'number' ? coord[1].toFixed(6) : ''}
-                              </td>
-                            </tr>
-                          ) : null
-                        ))}
-                      </tbody>
+  {Array.isArray(farm?.coordinates) &&
+    farm.coordinates.map((coord, index) => (
+      Array.isArray(coord) ? (
+        <tr key={index}>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+            {index + 1}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+            {typeof coord[0] === 'number' ? coord[0].toFixed(6) : ''}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+            {typeof coord[1] === 'number' ? coord[1].toFixed(6) : ''}
+          </td>
+        </tr>
+      ) : null
+    ))
+  }
+</tbody>
+
                     </table>
                   </div>
                 </div>
@@ -247,7 +277,7 @@ export default function FarmDetail() {
                       <dt className="text-sm font-medium text-gray-500">Days to Harvest</dt>
                       <dd className="mt-1 text-sm text-gray-900">
                         {(() => {
-                          const daysToHarvest = Math.ceil((new Date(farm.harvestDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                          const daysToHarvest = Math.ceil((new Date(farm?.harvestDate|| 0).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                           if (daysToHarvest < 0) {
                             return `Harvested ${Math.abs(daysToHarvest)} days ago`;
                           } else if (daysToHarvest === 0) {
@@ -261,13 +291,15 @@ export default function FarmDetail() {
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Growing Period</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {Math.ceil((new Date(farm.harvestDate).getTime() - new Date(farm.plantingDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                        {Math.ceil((new Date(farm?.harvestDate || 0).getTime() - new Date(farm?.plantingDate || 0).getTime()) / (1000 * 60 * 60 * 24))} days
+
                       </dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Created</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {new Date(farm.createdAt).toLocaleDateString('en-US', {
+                        {new Date(farm?.createdAt || 0).toLocaleDateString('en-US', {
+
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
@@ -277,7 +309,7 @@ export default function FarmDetail() {
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {new Date(farm.updatedAt).toLocaleDateString('en-US', {
+                        {new Date(farm?.updatedAt || 0).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
@@ -310,13 +342,13 @@ export default function FarmDetail() {
                     <button 
                       onClick={() => {
                         const reportData = {
-                          farmName: farm.name,
-                          crop: farm.crop,
-                          area: farm.area,
-                          plantingDate: farm.plantingDate,
-                          harvestDate: farm.harvestDate,
-                          coordinates: farm.coordinates,
-                          createdAt: farm.createdAt
+                          farmName: farm?.name || '',
+                          crop: farm?.crop || '',
+                          area: farm?.area || 0,
+                          plantingDate: farm?.plantingDate || '',
+                          harvestDate: farm?.harvestDate || '',
+                          coordinates: farm?.coordinates || [],
+                          createdAt: farm?.createdAt || ''
                         };
                         console.log('Generating report for:', reportData);
                         alert('Report generation feature coming soon!');
@@ -329,16 +361,16 @@ export default function FarmDetail() {
                     <button 
                       onClick={() => {
                         const farmData = {
-                          id: farm.id,
-                          name: farm.name,
-                          crop: farm.crop,
-                          area: farm.area,
-                          plantingDate: farm.plantingDate,
-                          harvestDate: farm.harvestDate,
-                          description: farm.description,
-                          coordinates: farm.coordinates,
-                          createdAt: farm.createdAt,
-                          updatedAt: farm.updatedAt
+                          id: farm?.id || '',
+                          name: farm?.name || '',
+                          crop: farm?.crop || '',
+                          area: farm?.area || 0,
+                          plantingDate: farm?.plantingDate || '',
+                          harvestDate: farm?.harvestDate || '',
+                          description: farm?.description || '',
+                          coordinates: farm?.coordinates || [],
+                          createdAt: farm?.createdAt || '',
+                          updatedAt: farm?.updatedAt || ''
                         };
                         
                         const dataStr = JSON.stringify(farmData, null, 2);
@@ -346,7 +378,7 @@ export default function FarmDetail() {
                         const url = URL.createObjectURL(dataBlob);
                         const link = document.createElement('a');
                         link.href = url;
-                        link.download = `${farm.name.replace(/\s+/g, '_')}_farm_data.json`;
+                        link.download = `${farm?.name.replace(/\s+/g, '_')}_farm_data.json`;
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);

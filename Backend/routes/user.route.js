@@ -9,4 +9,8 @@ router.post("/login", userController.login);
 router.get("/logout", userController.logout);
 router.get("/protected", isLoggedIn, userController.protected);
 
+// Admin routes
+router.get("/all", isLoggedIn, userController.getAllUsers);
+router.get("/stats", isLoggedIn, userController.getUserStats);
+
 module.exports = router;
