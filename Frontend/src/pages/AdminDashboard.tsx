@@ -1,19 +1,39 @@
 import { useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarmStore } from '../stores/farmStore';
 import { LogOut, Users, MapPin, Sprout, BarChart3, Settings, Plus } from 'lucide-react';
 
 export default function AdminDashboard() {
+    const [allFarmsPage, setAllFarmsPage] = useState(1);
+    const allFarmsSectionRef = useRef<HTMLDivElement>(null);
+    const allFarmsLimit = 10;
     const { user, logout } = useAuth();
-    const { farms, loading, error, fetchFarms, clearError } = useFarmStore();
+    const { farms, allFarms, loading, error, fetchFarms, fetchAllFarms, clearError } = useFarmStore();
 
     // Fetch farms when component mounts
     useEffect(() => {
         if (user) {
-            fetchFarms();
+            fetchFarms(); // For My Farms
+            fetchAllFarms(allFarmsPage, allFarmsLimit); // For All System Farms, paginated
         }
-    }, [user, fetchFarms]);
+    }, [user, fetchFarms, fetchAllFarms, allFarmsPage]);
+
+    // Scroll All System Farms section into view when page changes
+    const lastPageRef = useRef(allFarmsPage);
+    useEffect(() => {
+        if (allFarmsSectionRef.current) {
+            if (allFarmsPage > lastPageRef.current) {
+                // Next button: scroll to top
+                allFarmsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (allFarmsPage < lastPageRef.current) {
+                // Previous button: scroll to bottom
+                allFarmsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+            lastPageRef.current = allFarmsPage;
+        }
+    }, [allFarmsPage]);
 
     // Clear any errors when component unmounts
     useEffect(() => {
@@ -284,68 +304,88 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* All System Farms */}
-                    <div className="mt-8">
+                    <div className="mt-8" ref={allFarmsSectionRef}>
                         <div className="bg-white shadow rounded-lg">
                             <div className="px-4 py-5 sm:p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                        All System Farms ({farms.length} total)
+                                        All System Farms ({allFarms.length} total)
                                     </h3>
                                 </div>
-                                {farms.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {farms.map((farm) => (
-                                            <div key={farm.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <h4 className="text-md font-medium text-gray-900">{farm.name}</h4>
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        {farm.crop}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="space-y-2 text-sm text-gray-600">
-                                                    <div className="flex justify-between">
-                                                        <span>Owner:</span>
-                                                        <span className="font-medium text-blue-600">
-                                                            {farm.userId === user?.id ? 'You' : 'User'}
+                                {allFarms.length > 0 ? (
+                                    <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {allFarms.map((farm) => (
+                                                <div key={farm.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <h4 className="text-md font-medium text-gray-900">{farm.name}</h4>
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                            {farm.crop}
                                                         </span>
                                                     </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Area:</span>
-                                                        <span className="font-medium">{farm.area} hectares</span>
+                                                    <div className="space-y-2 text-sm text-gray-600">
+                                                        <div className="flex justify-between">
+                                                            <span>Owner:</span>
+                                                            <span className="font-medium text-blue-600">
+                                                                {(
+                                                                    farm.userId === user?.id ||
+                                                                    (farm.userId && typeof farm.userId === 'object' && '_id' in farm.userId && (farm.userId as any)._id === user?.id)
+                                                                ) ? 'Admin' : 'User'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Area:</span>
+                                                            <span className="font-medium">{farm.area} hectares</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Planting:</span>
+                                                            <span className="font-medium">
+                                                                {new Date(farm.plantingDate).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Harvest:</span>
+                                                            <span className="font-medium">
+                                                                {new Date(farm.harvestDate).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Planting:</span>
-                                                        <span className="font-medium">
-                                                            {new Date(farm.plantingDate).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Harvest:</span>
-                                                        <span className="font-medium">
-                                                            {new Date(farm.harvestDate).toLocaleDateString()}
-                                                        </span>
+                                                    {farm.description && (
+                                                        <p className="mt-2 text-xs text-gray-500 line-clamp-2">
+                                                            {farm.description}
+                                                        </p>
+                                                    )}
+                                                    <div className="mt-3 flex justify-between items-center text-xs">
+                                                        <span className="text-gray-400">Created {new Date(farm.createdAt).toLocaleDateString()}</span>
+                                                        <Link 
+                                                            to={`/farm/${farm.id}`}
+                                                            className="text-green-600 hover:text-green-700 font-medium"
+                                                        >
+                                                            View Details →
+                                                        </Link>
                                                     </div>
                                                 </div>
-
-                                                {farm.description && (
-                                                    <p className="mt-2 text-xs text-gray-500 line-clamp-2">
-                                                        {farm.description}
-                                                    </p>
-                                                )}
-
-                                                <div className="mt-3 flex justify-between items-center text-xs">
-                                                    <span className="text-gray-400">Created {new Date(farm.createdAt).toLocaleDateString()}</span>
-                                                    <Link 
-                                                        to={`/farm/${farm.id}`}
-                                                        className="text-green-600 hover:text-green-700 font-medium"
-                                                    >
-                                                        View Details →
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+                                        {/* Pagination Controls */}
+                                        <div className="flex justify-center mt-4">
+                                            <button
+                                                className="px-4 py-2 mr-2 bg-gray-200 rounded disabled:opacity-50"
+                                                disabled={allFarmsPage === 1}
+                                                onClick={() => setAllFarmsPage(allFarmsPage - 1)}
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="px-4 py-2">Page {allFarmsPage}</span>
+                                            <button
+                                                className="px-4 py-2 ml-2 bg-gray-200 rounded disabled:opacity-50"
+                                                disabled={allFarms.length < allFarmsLimit}
+                                                onClick={() => setAllFarmsPage(allFarmsPage + 1)}
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </>
                                 ) : (
                                     <div className="text-center py-8">
                                         <MapPin className="mx-auto h-12 w-12 text-gray-400" />
@@ -362,4 +402,4 @@ export default function AdminDashboard() {
             </main>
         </div>
     );
-}                           
+}

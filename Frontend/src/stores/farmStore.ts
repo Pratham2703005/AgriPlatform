@@ -3,8 +3,10 @@ import { FarmAPI } from '../services/farmApi';
 import type { Farm, FarmState, FarmFormData } from '../types/farm';
 
 interface FarmStore extends FarmState {
+  allFarms: Farm[];
   // API-based actions
   fetchFarms: (page?: number, limit?: number) => Promise<void>;
+  fetchAllFarms: (page?: number, limit?: number) => Promise<void>;
   addFarm: (
     farmData: FarmFormData,
     coordinates: number[][],
@@ -79,8 +81,36 @@ const calculatePolygonArea = (coordinates: number[][]): number => {
 };
 
 export const useFarmStore = create<FarmStore>((set, get) => ({
+  // Fetch all farms in the system (admin)
+  fetchAllFarms: async (page = 1, limit = 10) => {
+    try {
+      set({ loading: true, error: null });
+      const response = await FarmAPI.getAllFarms(page, limit);
+      if (response.code === 1) {
+        const { farms, pagination } = response.result;
+        const transformedFarms = farms.map(FarmAPI.transformFromApiFormat);
+        set({
+          allFarms: transformedFarms,
+          pagination,
+          loading: false,
+        });
+      } else {
+        set({
+          error: response.message || 'Failed to fetch all farms',
+          loading: false,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching all farms:', error);
+      set({
+        error: error.message || 'Failed to fetch all farms',
+        loading: false,
+      });
+    }
+  },
   // State
-  farms: [],
+  farms: [], // My farms
+  allFarms: [], // All system farms
   currentFarm: null,
   loading: false,
   error: null,
@@ -102,13 +132,13 @@ export const useFarmStore = create<FarmStore>((set, get) => ({
         const { farms, pagination } = response.result;
         
         // Transform API data to frontend format
-        const transformedFarms = farms.map(FarmAPI.transformFromApiFormat);
-        
-        set({
-          farms: transformedFarms,
-          pagination,
-          loading: false,
-        });
+          const transformedFarms = farms.map(FarmAPI.transformFromApiFormat);
+          
+          set({
+            farms: transformedFarms,
+            pagination,
+            loading: false,
+          });
       } else {
         set({
           error: response.message || 'Failed to fetch farms',

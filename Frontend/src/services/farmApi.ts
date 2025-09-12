@@ -48,6 +48,22 @@ export interface PaginatedFarmsResponse {
  */
 export class FarmAPI {
   /**
+   * Get all farms in the system (admin)
+   */
+  static async getAllFarms(page = 1, limit = 10): Promise<PaginatedFarmsResponse> {
+    try {
+      const authConfig = AuthAPI.getAuthConfig();
+      const response = await get<PaginatedFarmsResponse>(
+        `/farms/all?page=${page}&limit=${limit}`,
+        authConfig
+      );
+      return response;
+    } catch (error) {
+      console.error('Error fetching all farms:', error);
+      throw error;
+    }
+  }
+  /**
    * Get all farms for authenticated user
    */
   static async getFarms(page = 1, limit = 10): Promise<PaginatedFarmsResponse> {

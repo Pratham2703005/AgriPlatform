@@ -6,6 +6,9 @@ const farmController = require("../controllers/farm.controller");
 // All farm routes require authentication
 router.use(isLoggedIn);
 
+// GET /farms/all - Get all farms in the system (admin only)
+router.get("/all", farmController.getAllFarms);
+
 // GET /farms - Get all farms for authenticated user (with pagination)
 router.get("/", farmController.getFarms);
 
