@@ -2,27 +2,23 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../contexts/AuthContext';
-import { useFarmStore } from '../stores/farmStore';
+import { useFarms } from '../hooks/useFarms';
 import type { FarmFormData } from '../types/farm';
 import { CROP_OPTIONS } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Sprout, MapPin, Calendar, Save, X } from 'lucide-react';
 
 export default function EditFarm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { getFarmById, updateFarm, fetchFarms, loading, error } = useFarmStore();
+  const { user, isGuestMode } = useAuth();
+  const { getFarmById, updateFarm, fetchFarms, loading, error } = useFarms();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
   const [showMap, setShowMap] = useState(false);
   
-  // Fetch farms when component mounts to ensure data is available on page reload
-  useEffect(() => {
-    if (user && id) {
-      fetchFarms();
-    }
-  }, [user, id, fetchFarms]);
+  // Note: farms are auto-fetched by useFarms hook when user context is set
+  // No manual fetch needed as the hook handles this automatically
 
   const farm = id ? getFarmById(id) : null;
 
@@ -37,7 +33,10 @@ export default function EditFarm() {
   const plantingDate = watch('plantingDate');
 
   // Check permissions
-  const canEdit = user?.role === 'admin' || farm?.userId?._id === user?.id;
+  const isGuestFarm = (farm as any)?.isGuest === true;
+  const canEdit = user?.role === 'admin' || 
+    (farm?.userId === user?.id) || 
+    (isGuestFarm && isGuestMode);
 
   useEffect(() => {
     if (farm) {
@@ -53,8 +52,7 @@ export default function EditFarm() {
       
       setValue('plantingDate', formatDateForInput(farm.plantingDate));
       setValue('harvestDate', formatDateForInput(farm.harvestDate));
-      setValue('description', farm.description || '');
-      
+    // Removed unused plantingDate and harvestDate state declarations
       // Set coordinates and area
       setCoordinates(farm.coordinates);
       setArea(farm.area);
@@ -63,10 +61,18 @@ export default function EditFarm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading farm details...</p>
+      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+        <div className="card p-8 flex flex-col items-center space-y-6 animate-in">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sprout className="h-5 w-5 text-primary-600 animate-pulse" />
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-medium text-neutral-900 mb-2">Loading Farm Details</p>
+            <p className="text-sm text-neutral-600">Preparing edit interface...</p>
+          </div>
         </div>
       </div>
     );
@@ -75,14 +81,18 @@ export default function EditFarm() {
   // Only show Farm Not Found after loading is complete
   if (!farm && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Farm Not Found</h2>
-          <p className="text-gray-600 mb-6">The farm you're looking for doesn't exist or has been removed.</p>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
+      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+        <div className="card-elevated p-8 text-center max-w-md animate-in">
+          <div className="mb-6">
+            <div className="h-16 w-16 bg-gradient-to-br from-neutral-400 to-neutral-600 rounded-2xl flex items-center justify-center mx-auto">
+              <Sprout className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-neutral-900 mb-3">Farm Not Found</h2>
+          <p className="text-neutral-600 mb-6 leading-relaxed">
+            The farm you're looking for doesn't exist or has been removed.
+          </p>
+          <Link to="/dashboard" className="btn-primary inline-flex items-center">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Link>
@@ -93,14 +103,18 @@ export default function EditFarm() {
 
   if (!canEdit) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-6">You don't have permission to edit this farm.</p>
-          <Link
-            to={`/farm/${id}`}
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
+      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+        <div className="card-elevated p-8 text-center max-w-md animate-in">
+          <div className="mb-6">
+            <div className="h-16 w-16 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl flex items-center justify-center mx-auto shadow-glow-red">
+              <X className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-neutral-900 mb-3">Access Denied</h2>
+          <p className="text-neutral-600 mb-6 leading-relaxed">
+            You don't have permission to edit this farm.
+          </p>
+          <Link to={`/farm/${id}`} className="btn-primary inline-flex items-center">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Farm Details
           </Link>
@@ -115,19 +129,21 @@ export default function EditFarm() {
       return;
     }
 
-    try {
-      await updateFarm(farm.id, {
-        ...data,
-        coordinates,
-        area
-      });
-      
-      // Only navigate after the update is complete
-      navigate(`/farm/${farm.id}`);
-    } catch (error) {
-      console.error('Error updating farm:', error);
-      // Error is already handled by the store
-    }
+      try {
+        if (!farm) {
+          throw new Error('Farm not found');
+        }
+        await updateFarm(farm.id, {
+          ...data,
+          coordinates,
+          area
+        });
+        // Only navigate after the update is complete
+        navigate(`/farm/${farm.id}`);
+      } catch (error) {
+        console.error('Error updating farm:', error);
+        // Error is already handled by the store
+      }
   };
 
   const handlePolygonComplete = (coords: number[][], calculatedArea: number) => {
@@ -136,133 +152,176 @@ export default function EditFarm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-blue-600 text-white px-6 py-4">
-            <div className="flex items-center">
+    <div className="min-h-screen gradient-mesh">
+      {/* Enhanced Header */}
+      <header className="glass border-b border-white/10 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center animate-in">
               <Link
                 to={`/farm/${id}`}
-                className="mr-4 p-2 rounded-md text-blue-200 hover:text-white hover:bg-blue-700"
+                className="mr-4 p-2.5 rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-white/50 transition-all"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
-              <div>
-                <h1 className="text-2xl font-bold">Edit Farm</h1>
-                <p className="text-blue-100 mt-1">
-                  Update your farm details and boundary
-                </p>
+              <div className="flex items-start space-x-4">
+                <div className="h-12 w-12 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-glow">
+                  <Sprout className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-neutral-900">Edit Farm</h1>
+                  <div className="flex items-center space-x-3 mt-1">
+                    <span className="badge-primary">{farm?.name}</span>
+                    <span className="text-sm text-neutral-600">Update details & boundary</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </header>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-            {/* Farm Details Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Farm Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Farm Name *
-                </label>
-                <input
-                  type="text"
-                  {...register('name', { 
-                    required: 'Farm name is required',
-                    minLength: { value: 2, message: 'Name must be at least 2 characters' }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter farm name"
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-                )}
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        <div className="card-elevated animate-in overflow-hidden">
+
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-8">
+            {/* Enhanced Farm Details Section */}
+            <div>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="h-10 w-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center">
+                  <Sprout className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-neutral-900">Farm Information</h3>
+                  <p className="text-sm text-neutral-600">Update basic farm details</p>
+                </div>
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Farm Name */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Farm Name *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('name', { 
+                      required: 'Farm name is required',
+                      minLength: { value: 2, message: 'Name must be at least 2 characters' }
+                    })}
+                    className="input"
+                    placeholder="Enter farm name"
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
 
-              {/* Crop Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Crop Type *
-                </label>
-                <select
-                  {...register('crop', { required: 'Please select a crop type' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select crop type</option>
-                  {CROP_OPTIONS.map(crop => (
-                    <option key={crop} value={crop}>{crop}</option>
-                  ))}
-                </select>
-                {errors.crop && (
-                  <p className="text-red-500 text-sm mt-1">{errors.crop.message}</p>
-                )}
-              </div>
-
-              {/* Planting Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Planting Date *
-                </label>
-                <input
-                  type="date"
-                  {...register('plantingDate', { required: 'Planting date is required' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {errors.plantingDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.plantingDate.message}</p>
-                )}
-              </div>
-
-              {/* Harvest Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Harvest Date *
-                </label>
-                <input
-                  type="date"
-                  {...register('harvestDate', { 
-                    required: 'Harvest date is required',
-                    validate: value => {
-                      if (plantingDate && value <= plantingDate) {
-                        return 'Harvest date must be after planting date';
-                      }
-                      return true;
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {errors.harvestDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.harvestDate.message}</p>
-                )}
-              </div>
-
-              {/* Description */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (Optional)
-                </label>
-                <textarea
-                  {...register('description')}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter any additional details about your farm"
-                />
+                {/* Crop Type */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Crop Type *
+                  </label>
+                  <select
+                    {...register('crop', { required: 'Please select a crop type' })}
+                    className="input"
+                  >
+                    <option value="">Select crop type</option>
+                    {CROP_OPTIONS.map(crop => (
+                      <option key={crop} value={crop}>{crop}</option>
+                    ))}
+                  </select>
+                  {errors.crop && (
+                    <p className="text-red-500 text-sm mt-1">{errors.crop.message}</p>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Map Section */}
-            <div className="border-t pt-6">
-              <div className="flex items-center justify-between mb-4">
+            {/* Enhanced Dates Section */}
+            <div>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Farm Boundary</h3>
-                  <p className="text-gray-600 text-sm">
-                    Update your farm boundary on the map to recalculate the area
-                  </p>
+                  <h3 className="text-xl font-semibold text-neutral-900">Cultivation Timeline</h3>
+                  <p className="text-sm text-neutral-600">Set planting and harvest dates</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Planting Date */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Planting Date *
+                  </label>
+                  <input
+                    type="date"
+                    {...register('plantingDate', { required: 'Planting date is required' })}
+                    className="input"
+                  />
+                  {errors.plantingDate && (
+                    <p className="text-red-500 text-sm mt-1">{errors.plantingDate.message}</p>
+                  )}
+                </div>
+
+                {/* Harvest Date */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Harvest Date *
+                  </label>
+                  <input
+                    type="date"
+                    {...register('harvestDate', { 
+                      required: 'Harvest date is required',
+                      validate: value => {
+                        if (plantingDate && value <= plantingDate) {
+                          return 'Harvest date must be after planting date';
+                        }
+                        return true;
+                      }
+                    })}
+                    className="input"
+                  />
+                  {errors.harvestDate && (
+                    <p className="text-red-500 text-sm mt-1">{errors.harvestDate.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Enhanced Description Section */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Description (Optional)
+              </label>
+              <textarea
+                {...register('description')}
+                rows={3}
+                className="input resize-none"
+                placeholder="Enter any additional details about your farm"
+              />
+            </div>
+
+            {/* Enhanced Map Section */}
+            <div className="border-t border-neutral-200 pt-8">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 bg-gradient-to-br from-accent-500 to-accent-700 rounded-xl flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-neutral-900">Farm Boundary</h3>
+                    <p className="text-sm text-neutral-600">
+                      Update your farm boundary on the map to recalculate the area
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowMap(!showMap)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="btn-secondary"
                 >
                   {showMap ? 'Hide Map' : 'Show Map'}
                 </button>
@@ -278,16 +337,18 @@ export default function EditFarm() {
                   />
                   
                   {coordinates.length > 0 && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="text-blue-800">
-                          <span className="font-semibold">Area:</span> {area} hectares
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4">
+                      <div className="flex items-center space-x-6">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                          <span className="text-green-800 font-semibold">Area: {area.toFixed(2)} hectares</span>
                         </div>
-                        <div className="text-blue-800">
-                          <span className="font-semibold">Points:</span> {coordinates.length}
+                        <div className="flex items-center space-x-2">
+                          <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-blue-800 font-semibold">Points: {coordinates.length}</span>
                         </div>
-                        <div className="text-blue-600 text-sm">
-                          ✓ Boundary updated
+                        <div className="text-green-600 text-sm font-medium flex items-center">
+                          ✓ Boundary updated successfully
                         </div>
                       </div>
                     </div>
@@ -296,35 +357,41 @@ export default function EditFarm() {
               )}
 
               {!showMap && coordinates.length === 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800 text-sm">
-                    ⚠️ Please mark your farm boundary on the map before saving
+                <div className="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4">
+                  <p className="text-orange-800 text-sm font-medium flex items-center">
+                    <span className="text-orange-600 mr-2">⚠️</span>
+                    Please mark your farm boundary on the map before saving
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Error Display */}
+            {/* Enhanced Error Display */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800 text-sm">{error}</p>
+              <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
+                <div className="flex items-center">
+                  <div className="h-5 w-5 text-red-600 mr-3">⚠️</div>
+                  <p className="text-red-800 text-sm font-medium">{error}</p>
+                </div>
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex justify-between pt-6 border-t">
+            {/* Enhanced Action Buttons */}
+            <div className="flex justify-between items-center pt-8 border-t border-neutral-200">
               <Link
                 to={`/farm/${id}`}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="btn-secondary inline-flex items-center"
               >
+                <X className="h-4 w-4 mr-2" />
                 Cancel
               </Link>
               
               <button
                 type="submit"
                 disabled={loading || coordinates.length === 0}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
+                <Save className="h-4 w-4 mr-2" />
                 {loading ? 'Updating Farm...' : 'Update Farm'}
               </button>
             </div>

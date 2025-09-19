@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Sprout, Shield, Activity } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
@@ -29,113 +29,147 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-green-100">
-            <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
+    <div className="min-h-screen gradient-mesh flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full">
+        {/* Enhanced Header */}
+        <div className="text-center mb-8 animate-in">
+          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 shadow-glow mb-6">
+            <Sprout className="h-8 w-8 text-white" />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Welcome to Agriculture Platform
+          <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-neutral-600">
+            Sign in to your AgriPlatform account
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-              {error}
-            </div>
-          )}
+        {/* Enhanced Form Card */}
+        <div className="card-elevated p-8 animate-in stagger-1">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="card-elevated bg-red-50 border-l-4 border-l-red-500 p-4 animate-in">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <Shield className="h-5 w-5 text-red-500" />
+                  </div>
+                  <div className="text-sm text-red-700">{error}</div>
+                </div>
+              </div>
+            )}
 
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your email"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="relative">
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-2">
+                  Email address
+                </label>
                 <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your password"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-field"
+                  placeholder="Enter your email"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="input-field pr-10"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-neutral-50 rounded-r-xl transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-neutral-400 hover:text-neutral-600" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-neutral-400 hover:text-neutral-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn-primary w-full group"
+              >
+                {isLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-white mr-3"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Activity className="h-2 w-2 text-white animate-pulse" />
+                      </div>
+                    </div>
+                    Signing in...
+                  </div>
+                ) : (
+                  <>
+                    <Shield className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
+                    Sign in
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Enhanced Footer */}
+        <div className="text-center mt-6 animate-in stagger-2">
+          <p className="text-sm text-neutral-600">
+            Don't have an account?{' '}
+            <Link 
+              to="/register" 
+              className="font-medium text-primary-600 hover:text-primary-700 transition-colors"
+            >
+              Sign up here
+            </Link>
+          </p>
+        </div>
+
+        {/* Enhanced Demo Credentials */}
+        <div className="mt-6 card p-5 bg-gradient-to-br from-accent-50 to-accent-100 border-l-4 border-l-accent-500 animate-in stagger-3">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <div className="h-8 w-8 rounded-lg bg-accent-200 flex items-center justify-center">
+                <Shield className="h-4 w-4 text-accent-700" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-accent-800 mb-2">Demo Credentials</h3>
+              <div className="text-xs text-accent-700 space-y-2">
+                <div className="flex justify-between items-center p-2 bg-white/50 rounded-lg">
+                  <span className="font-medium">Admin:</span>
+                  <span>admin@farm.com / admin123</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-white/50 rounded-lg">
+                  <span className="font-medium">User:</span>
+                  <span>farmer@farm.com / farmer123</span>
+                </div>
               </div>
             </div>
           </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing in...
-                </div>
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-green-600 hover:text-green-500">
-                Sign up here
-              </Link>
-            </p>
-          </div>
-
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-md">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h3>
-            <div className="text-xs text-blue-700 space-y-1">
-              <p><strong>Admin:</strong> admin@farm.com / admin123</p>
-              <p><strong>User:</strong> farmer@farm.com / farmer123</p>
-            </div>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );

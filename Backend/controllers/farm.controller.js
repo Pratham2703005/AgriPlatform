@@ -41,8 +41,14 @@ const getFarms = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
+    // Debug log: print userId
+    console.log("[getFarms] userId:", userId);
+
     // Get farms with pagination
     const farms = await Farm.findByUserId(userId, { page, limit });
+
+    // Debug log: print found farms
+    console.log("[getFarms] farms found:", farms);
 
     // Get total count for pagination
     const total = await Farm.countDocuments({ userId });
@@ -138,12 +144,12 @@ const createFarm = async (req, res) => {
       );
       return res.status(400).json(response);
     }
-    
+
     // Ensure the polygon is closed (first point equals last point)
     let closedCoordinates = [...coordinates];
     const firstPoint = coordinates[0];
     const lastPoint = coordinates[coordinates.length - 1];
-    
+
     // Check if first and last points are the same
     if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
       // If not, add the first point at the end to close the loop
@@ -203,7 +209,7 @@ const updateFarm = async (req, res) => {
     const farmId = req.params.id;
     const userId = req.user._id;
     const updateData = req.body;
-    
+
     const farm = await Farm.findById(farmId);
     if (!farm) {
       const response = new ResponseEntity(0, "Farm not found", {});
@@ -213,10 +219,10 @@ const updateFarm = async (req, res) => {
     console.log(!farm.isOwnedBy(userId));
 
     // Check if user owns this farm
-   if (!farm.isOwnedBy(userId) && req.user.role !== "admin") {
-  const response = new ResponseEntity(0, "Access denied", {});
-  return res.status(403).json(response);
-}
+    if (!farm.isOwnedBy(userId) && req.user.role !== "admin") {
+      const response = new ResponseEntity(0, "Access denied", {});
+      return res.status(403).json(response);
+    }
 
     // Validate dates if provided
     if (updateData.plantingDate && updateData.harvestDate) {
@@ -232,11 +238,14 @@ const updateFarm = async (req, res) => {
         return res.status(400).json(response);
       }
     }
-    
+
     // Handle coordinates update if provided
     if (updateData.coordinates) {
       // Validate coordinates
-      if (!Array.isArray(updateData.coordinates) || updateData.coordinates.length < 3) {
+      if (
+        !Array.isArray(updateData.coordinates) ||
+        updateData.coordinates.length < 3
+      ) {
         const response = new ResponseEntity(
           0,
           "Invalid coordinates. Must be an array with at least 3 points",
@@ -244,25 +253,26 @@ const updateFarm = async (req, res) => {
         );
         return res.status(400).json(response);
       }
-      
+
       // Ensure the polygon is closed (first point equals last point)
       let closedCoordinates = [...updateData.coordinates];
       const firstPoint = updateData.coordinates[0];
-      const lastPoint = updateData.coordinates[updateData.coordinates.length - 1];
-      
+      const lastPoint =
+        updateData.coordinates[updateData.coordinates.length - 1];
+
       // Check if first and last points are the same
       if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
         // If not, add the first point at the end to close the loop
         closedCoordinates.push([...firstPoint]);
       }
-      
+
       // Update the coordinates in GeoJSON format
       updateData.coordinates = {
         type: "Polygon",
-        coordinates: [closedCoordinates]
+        coordinates: [closedCoordinates],
       };
     }
-    
+
     // Update farm
     const updatedFarm = await Farm.findByIdAndUpdate(farmId, updateData, {
       new: true,
@@ -283,7 +293,9 @@ const updateFarm = async (req, res) => {
       return res.status(400).json(response);
     }
 
-    const response = new ResponseEntity(0, "Error updating farm", {error: error.message});
+    const response = new ResponseEntity(0, "Error updating farm", {
+      error: error.message,
+    });
     res.status(500).json(response);
   }
 };

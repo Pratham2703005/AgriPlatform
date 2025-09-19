@@ -4,6 +4,7 @@ import { LandingPage } from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import { CreateFarm } from './pages/CreateFarm';
 import FarmDetail from './pages/FarmDetail';
 import EditFarm from './pages/EditFarm';
@@ -26,6 +27,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin',
+    element: (
+      <ProtectedRoute>
+        <AdminDashboard />
       </ProtectedRoute>
     ),
   },

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-// import { useAuth } from '../contexts/AuthContext';
-import { useFarmStore } from '../stores/farmStore';
+import { useAuth } from '../contexts/AuthContext';
+import { useFarms } from '../hooks/useFarms';
 import type { FarmFormData } from '../types/farm';
 import { CROP_OPTIONS } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
+import { ArrowLeft, Sprout, MapPin, Calendar, Save, X, Plus, FileText, User, Activity, Map } from 'lucide-react';
 
 export const CreateFarm: React.FC = () => {
   const navigate = useNavigate();
-  // const { user } = useAuth();
-  const { addFarm, fetchFarms, loading, error } = useFarmStore();
+  const { isGuestMode } = useAuth();
+  const { addFarm, fetchFarms, loading, error } = useFarms();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
   const [showMap, setShowMap] = useState(false);
@@ -30,10 +31,9 @@ export const CreateFarm: React.FC = () => {
       return;
     }
 
-  // Backend handles user ID from authentication
-  await addFarm(data, coordinates, area);
-  await fetchFarms();
-  navigate('/dashboard');
+    // The unified hook handles guest vs authenticated mode automatically
+    await addFarm(data, coordinates, area);
+    navigate('/dashboard');
   };
 
   const handlePolygonComplete = (coords: number[][], calculatedArea: number) => {
@@ -42,147 +42,230 @@ export const CreateFarm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-green-600 text-white px-6 py-4">
-            <h1 className="text-2xl font-bold">Create New Farm</h1>
-            <p className="text-green-100 mt-1">
-              Fill in your farm details and mark your farm boundary on the map
-            </p>
+    <div className="min-h-screen gradient-mesh">
+      {/* Enhanced Header */}
+      <header className="glass border-b border-white/10 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center animate-in">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="mr-4 p-2.5 rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-white/50 transition-all"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div className="flex items-start space-x-4">
+                <div className="h-12 w-12 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-glow">
+                  <Plus className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-neutral-900">Create New Farm</h1>
+                  <div className="flex items-center space-x-3 mt-1">
+                    <span className="text-sm text-neutral-600">
+                      Add your farm details and map boundaries
+                    </span>
+                    {isGuestMode && (
+                      <div className="badge-info">
+                        <User className="h-3 w-3 mr-1" />
+                        Guest Mode - Local Save
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
+      </header>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-            {/* Farm Details Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Farm Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Farm Name *
-                </label>
-                <input
-                  type="text"
-                  {...register('name', { 
-                    required: 'Farm name is required',
-                    minLength: { value: 2, message: 'Name must be at least 2 characters' }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Enter farm name"
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-                )}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="card-elevated animate-in">{/* Form will be enhanced below */}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-8">
+            {/* Enhanced Farm Details Section */}
+            <div>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="h-10 w-10 bg-gradient-to-br from-secondary-500 to-secondary-700 rounded-xl flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-neutral-900">Farm Details</h2>
+                  <p className="text-sm text-neutral-600">Basic information about your farm</p>
+                </div>
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Enhanced Farm Name */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-neutral-700">
+                    Farm Name *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      {...register('name', { 
+                        required: 'Farm name is required',
+                        minLength: { value: 2, message: 'Name must be at least 2 characters' }
+                      })}
+                      className="input pl-10"
+                      placeholder="Enter farm name"
+                    />
+                    <Sprout className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                  </div>
+                  {errors.name && (
+                    <p className="text-red-500 text-sm flex items-center">
+                      <Activity className="h-3 w-3 mr-1" />
+                      {errors.name.message}
+                    </p>
+                  )}
+                </div>
 
-              {/* Crop Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Crop Type *
-                </label>
-                <select
-                  {...register('crop', { required: 'Please select a crop type' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">Select crop type</option>
-                  {CROP_OPTIONS.map(crop => (
-                    <option key={crop} value={crop}>{crop}</option>
-                  ))}
-                </select>
-                {errors.crop && (
-                  <p className="text-red-500 text-sm mt-1">{errors.crop.message}</p>
-                )}
-              </div>
+                {/* Enhanced Crop Type */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-neutral-700">
+                    Crop Type *
+                  </label>
+                  <div className="relative">
+                    <select
+                      {...register('crop', { required: 'Please select a crop type' })}
+                      className="input pl-10 appearance-none"
+                    >
+                      <option value="">Select crop type</option>
+                      {CROP_OPTIONS.map(crop => (
+                        <option key={crop} value={crop}>{crop}</option>
+                      ))}
+                    </select>
+                    <Sprout className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                  </div>
+                  {errors.crop && (
+                    <p className="text-red-500 text-sm flex items-center">
+                      <Activity className="h-3 w-3 mr-1" />
+                      {errors.crop.message}
+                    </p>
+                  )}
+                </div>
 
-              {/* Planting Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Planting Date *
-                </label>
-                <input
-                  type="date"
-                  {...register('plantingDate', { required: 'Planting date is required' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-                {errors.plantingDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.plantingDate.message}</p>
-                )}
-              </div>
+                {/* Enhanced Planting Date */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-neutral-700">
+                    Planting Date *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      {...register('plantingDate', { required: 'Planting date is required' })}
+                      className="input pl-10"
+                    />
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                  </div>
+                  {errors.plantingDate && (
+                    <p className="text-red-500 text-sm flex items-center">
+                      <Activity className="h-3 w-3 mr-1" />
+                      {errors.plantingDate.message}
+                    </p>
+                  )}
+                </div>
 
-              {/* Harvest Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Harvest Date *
-                </label>
-                <input
-                  type="date"
-                  {...register('harvestDate', { 
-                    required: 'Harvest date is required',
-                    validate: value => {
-                      if (plantingDate && value <= plantingDate) {
-                        return 'Harvest date must be after planting date';
-                      }
-                      return true;
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-                {errors.harvestDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.harvestDate.message}</p>
-                )}
-              </div>
+                {/* Enhanced Harvest Date */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-neutral-700">
+                    Harvest Date *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      {...register('harvestDate', { 
+                        required: 'Harvest date is required',
+                        validate: value => {
+                          if (plantingDate && value <= plantingDate) {
+                            return 'Harvest date must be after planting date';
+                          }
+                          return true;
+                        }
+                      })}
+                      className="input pl-10"
+                    />
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                  </div>
+                  {errors.harvestDate && (
+                    <p className="text-red-500 text-sm flex items-center">
+                      <Activity className="h-3 w-3 mr-1" />
+                      {errors.harvestDate.message}
+                    </p>
+                  )}
+                </div>
 
-              {/* Description */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (Optional)
-                </label>
-                <textarea
-                  {...register('description')}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Enter any additional details about your farm"
-                />
+                {/* Enhanced Description */}
+                <div className="md:col-span-2 space-y-2">
+                  <label className="block text-sm font-medium text-neutral-700">
+                    Farm Description (Optional)
+                  </label>
+                  <textarea
+                    {...register('description')}
+                    rows={4}
+                    className="input resize-none"
+                    placeholder="Describe your farm, soil type, irrigation methods, or any other relevant details..."
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Map Section */}
-            <div className="border-t pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Farm Boundary</h3>
-                  <p className="text-gray-600 text-sm">
-                    Draw your farm boundary on the map to calculate the area
+            {/* Enhanced Map Section */}
+            <div className="border-t border-neutral-200 pt-8">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="h-10 w-10 bg-gradient-to-br from-accent-500 to-accent-700 rounded-xl flex items-center justify-center">
+                  <Map className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold text-neutral-900">Farm Boundary Mapping</h2>
+                  <p className="text-sm text-neutral-600">
+                    Use the interactive map to draw your farm boundary and calculate area
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowMap(!showMap)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className={`btn-secondary group ${showMap ? 'bg-accent-50 text-accent-700 border-accent-300' : ''}`}
                 >
-                  {showMap ? 'Hide Map' : 'Show Map'}
+                  <Map className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
+                  {showMap ? 'Hide Map' : 'Show Interactive Map'}
                 </button>
               </div>
 
               {showMap && (
-                <div className="space-y-4">
-                  <LeafletMap
-                    onPolygonComplete={handlePolygonComplete}
-                    height="500px"
-                    className="border rounded-lg"
-                  />
+                <div className="space-y-6">
+                  <div className="rounded-xl overflow-hidden border border-neutral-200 shadow-soft">
+                    <LeafletMap
+                      onPolygonComplete={handlePolygonComplete}
+                      height="500px"
+                      className="w-full"
+                    />
+                  </div>
                   
                   {coordinates.length > 0 && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="text-green-800">
-                          <span className="font-semibold">Area:</span> {area} hectares
+                    <div className="card bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-l-green-500 p-6 animate-in">
+                      <div className="flex items-center space-x-6">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-8 w-8 bg-green-200 rounded-lg flex items-center justify-center">
+                            <MapPin className="h-4 w-4 text-green-700" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-green-800">Calculated Area</p>
+                            <p className="text-lg font-bold text-green-700">{area.toFixed(2)} hectares</p>
+                          </div>
                         </div>
-                        <div className="text-green-800">
-                          <span className="font-semibold">Points:</span> {coordinates.length}
+                        <div className="flex items-center space-x-2">
+                          <div className="h-8 w-8 bg-green-200 rounded-lg flex items-center justify-center">
+                            <Activity className="h-4 w-4 text-green-700" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-green-800">Boundary Points</p>
+                            <p className="text-lg font-bold text-green-700">{coordinates.length} mapped</p>
+                          </div>
                         </div>
-                        <div className="text-green-600 text-sm">
-                          ✓ Boundary marked successfully
+                        <div className="flex items-center space-x-2 text-green-600">
+                          <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium">Boundary marked successfully</span>
                         </div>
                       </div>
                     </div>
@@ -191,37 +274,69 @@ export const CreateFarm: React.FC = () => {
               )}
 
               {!showMap && coordinates.length === 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800 text-sm">
-                    ⚠️ Please mark your farm boundary on the map before submitting
-                  </p>
+                <div className="card bg-gradient-to-r from-amber-50 to-orange-100 border-l-4 border-l-amber-500 p-6">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <Map className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 mb-1">Boundary Mapping Required</p>
+                      <p className="text-sm text-amber-700">
+                        Please use the interactive map to draw your farm boundary before submitting the form.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Error Display */}
+            {/* Enhanced Error Display */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800 text-sm">{error}</p>
+              <div className="card-elevated bg-red-50 border-l-4 border-l-red-500 p-6 animate-in">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <Activity className="h-5 w-5 text-red-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-red-800 mb-1">Creation Failed</h3>
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex justify-between pt-6 border-t">
+            {/* Enhanced Action Buttons */}
+            <div className="flex justify-between items-center pt-8 border-t border-neutral-200">
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="btn-ghost group"
               >
-                Cancel
+                <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-0.5 transition-transform" />
+                Cancel & Return
               </button>
               
               <button
                 type="submit"
                 disabled={loading || coordinates.length === 0}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary btn-lg group"
               >
-                {loading ? 'Creating Farm...' : 'Create Farm'}
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-white mr-3"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Activity className="h-2 w-2 text-white animate-pulse" />
+                      </div>
+                    </div>
+                    Creating Farm...
+                  </div>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform duration-200" />
+                    Create Farm
+                  </>
+                )}
               </button>
             </div>
           </form>
