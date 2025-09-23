@@ -11,6 +11,7 @@ export function formatDate(
   return format(dateObj, formatString);
 }
 
+
 /**
  * Format a date to show relative time (e.g., "2 hours ago")
  */
@@ -28,6 +29,13 @@ export function formatArea(hectares: number, unit: 'metric' | 'imperial' = 'metr
     return `${acres.toFixed(2)} acres`;
   }
   return `${hectares.toFixed(2)} ha`;
+}
+export function formatHectares(value: number) {
+  if (value >= 1e12) return (value / 1e12).toFixed(1) + "Tri";
+  if (value >= 1e9)  return (value / 1e9).toFixed(1) + "Bil";
+  if (value >= 1e6)  return (value / 1e6).toFixed(1) + "Mil";
+  if (value >= 1e3)  return (value / 1e3).toFixed(1) + "K";
+  return value.toFixed(1);
 }
 
 /**

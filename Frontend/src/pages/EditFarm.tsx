@@ -7,15 +7,15 @@ import type { FarmFormData } from '../types/farm';
 import { CROP_OPTIONS } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
 import { ArrowLeft, Sprout, MapPin, Calendar, Save, X } from 'lucide-react';
+import { formatHectares } from '@/utils';
 
 export default function EditFarm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isGuestMode } = useAuth();
-  const { getFarmById, updateFarm, fetchFarms, loading, error } = useFarms();
+  const { getFarmById, updateFarm, loading, error } = useFarms();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
-  const [showMap, setShowMap] = useState(false);
   
   // Note: farms are auto-fetched by useFarms hook when user context is set
   // No manual fetch needed as the hook handles this automatically
@@ -45,17 +45,19 @@ export default function EditFarm() {
       setValue('crop', farm.crop);
       
       // Format dates properly for the date input (YYYY-MM-DD)
-      const formatDateForInput = (dateString: string) => {
+      const formatDateForInput = (dateString?: string): string | undefined => {
+        if (!dateString) return undefined;
         const date = new Date(dateString);
         return date.toISOString().split('T')[0];
       };
       
-      setValue('plantingDate', formatDateForInput(farm.plantingDate));
-      setValue('harvestDate', formatDateForInput(farm.harvestDate));
+      setValue('plantingDate', formatDateForInput(farm.plantingDate) || '');
+      setValue('harvestDate', formatDateForInput(farm.harvestDate) || '');
+      
     // Removed unused plantingDate and harvestDate state declarations
       // Set coordinates and area
-      setCoordinates(farm.coordinates);
-      setArea(farm.area);
+      setCoordinates(farm?.coordinates);
+      setArea(farm?.area);
     }
   }, [farm, setValue]);
 
@@ -318,16 +320,8 @@ export default function EditFarm() {
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowMap(!showMap)}
-                  className="btn-secondary"
-                >
-                  {showMap ? 'Hide Map' : 'Show Map'}
-                </button>
               </div>
 
-              {showMap && (
                 <div className="space-y-4">
                   <LeafletMap
                     onPolygonComplete={handlePolygonComplete}
@@ -341,7 +335,7 @@ export default function EditFarm() {
                       <div className="flex items-center space-x-6">
                         <div className="flex items-center space-x-2">
                           <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                          <span className="text-green-800 font-semibold">Area: {area.toFixed(2)} hectares</span>
+                          <span className="text-green-800 font-semibold">Area: {formatHectares(area)} hectares</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
@@ -354,9 +348,9 @@ export default function EditFarm() {
                     </div>
                   )}
                 </div>
-              )}
+              
 
-              {!showMap && coordinates.length === 0 && (
+              {coordinates.length === 0 && (
                 <div className="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4">
                   <p className="text-orange-800 text-sm font-medium flex items-center">
                     <span className="text-orange-600 mr-2">⚠️</span>

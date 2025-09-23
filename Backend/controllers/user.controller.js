@@ -2,6 +2,7 @@ const User = require("../models/user.model.js");
 const app = require("../app.js");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const Farm = require("../models/farm.model.js");  
 const generateJWT = require("../utils/jwtGenerator.js");
 const ResponseEntity = require("../utils/ResponseEntity.js");
 
@@ -77,7 +78,6 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   const req_body = req.body;
-  console.log("BODY", req.body);
   if (!req_body.email) {
     const response = new ResponseEntity(0, "Enter the E-mail", {});
     return res.status(400).json(response);
@@ -117,14 +117,16 @@ const login = async (req, res) => {
       address: user.address,
       role: user.role
     };
-
+    const Userfarms = await Farm.find({ user: user._id });
     const response = new ResponseEntity(1, "Logged in Successfully", {
       token,
-      user: userData
+      user: userData,
+      farms: Userfarms
     });
     
     res.cookie("token", token).status(200).json(response);
   } catch (error) {
+    console.log("Some Error while Logging in:", error)
     const response = new ResponseEntity(0, "Some Error while Logging in", {});
     res.status(500).json(response);
   }

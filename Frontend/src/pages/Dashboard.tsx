@@ -6,7 +6,7 @@ import AdminDashboard from './AdminDashboard';
 import UserDashboard from './DashboardPage';
 
 export default function Dashboard() {
-  const { user, isGuestMode, isAuthenticated } = useAuth();
+  const { user, isGuestMode } = useAuth();
   const { setGuestMode, clearUserData } = useFarmStore();
 
   useEffect(() => {

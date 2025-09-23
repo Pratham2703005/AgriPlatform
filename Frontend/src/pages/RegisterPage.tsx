@@ -62,23 +62,27 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen gradient-mesh flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
+      <div className="max-w-lg w-full">
         {/* Enhanced Header */}
-        <div className="text-center mb-8 animate-in">
-          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-2xl bg-gradient-to-br from-secondary-500 to-secondary-700 shadow-glow mb-6">
+        <div className="flex justify-start animate-in gap-4">
+          
+          <div className="size-16 flex items-center justify-center rounded-2xl bg-gradient-to-br from-secondary-500 to-secondary-700 shadow-glow mb-6">
             <UserPlus className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-            Join AgriPlatform
-          </h1>
-          <p className="text-neutral-600">
-            Create your account to start farming smarter
-          </p>
+
+          <div className="mb-3">
+            <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+              Join AgriPlatform
+            </h1>
+            <p className="text-neutral-600">
+              Create your account to start farming smarter
+            </p>
+          </div>
         </div>
 
         {/* Enhanced Form Card */}
         <div className="card-elevated p-8 animate-in stagger-1">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
               <div className="card-elevated bg-red-50 border-l-4 border-l-red-500 p-4 animate-in">
                 <div className="flex items-start space-x-3">
@@ -90,9 +94,9 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-2">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="name" className="block text-sm font-medium text-neutral-700 mb-1">
                   Full Name
                 </label>
                 <input
@@ -108,7 +112,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
                   Email address
                 </label>
                 <input
@@ -125,7 +129,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="phone" className="block text-sm font-medium text-neutral-700 mb-1">
                   Phone Number
                 </label>
                 <input
@@ -141,7 +145,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-1">
                   Address
                 </label>
                 <textarea
@@ -157,7 +161,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
                   Password
                 </label>
                 <div className="relative">
@@ -187,7 +191,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-neutral-700 mb-1">
                   Confirm Password
                 </label>
                 <div className="relative">

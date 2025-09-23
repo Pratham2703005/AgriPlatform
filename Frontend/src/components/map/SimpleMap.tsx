@@ -1,4 +1,8 @@
+import { formatHectares } from '@/utils';
 import React, { useState } from 'react';
+
+// Maximum allowed area in hectares (100 km² = 10,000 hectares)
+const MAX_AREA_HECTARES = parseInt(import.meta.env.VITE_MAX_AREA_HECTARES || "1000000");
 
 interface SimpleMapProps {
   onPolygonComplete?: (coordinates: number[][], area: number) => void;
@@ -74,8 +78,15 @@ export const SimpleMap: React.FC<SimpleMapProps> = ({
       return;
     }
 
-    setIsDrawing(false);
+    // Check area limit before completing
     const area = calculateArea(coordinates);
+    if (area > MAX_AREA_HECTARES) {
+      alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
+      handleClearDrawing();
+      return;
+    }
+
+    setIsDrawing(false);
     if (onPolygonComplete) {
       onPolygonComplete(coordinates, area);
     }
@@ -185,9 +196,29 @@ export const SimpleMap: React.FC<SimpleMapProps> = ({
       {coordinates.length > 0 && (
         <div className="absolute bottom-4 left-4 bg-white px-3 py-2 rounded-lg shadow-lg text-sm">
           <div className="font-medium">Points: {coordinates.length}</div>
-          {coordinates.length > 2 && (
-            <div className="text-green-600">Area: {calculateArea(coordinates)} hectares</div>
-          )}
+          {coordinates.length > 2 && (() => {
+            const area = calculateArea(coordinates);
+            const isOverLimit = area > MAX_AREA_HECTARES;
+            const isNearLimit = area > MAX_AREA_HECTARES * 0.8;
+            
+            return (
+              <>
+                <div className={isOverLimit ? 'text-red-600' : isNearLimit ? 'text-orange-600' : 'text-green-600'}>
+                  Area: {formatHectares(area)} hectares
+                </div>
+                {isOverLimit && (
+                  <div className="text-red-600 text-xs mt-1 font-medium">
+                    ⚠️ Exceeds limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
+                  </div>
+                )}
+                {isNearLimit && !isOverLimit && (
+                  <div className="text-orange-600 text-xs mt-1">
+                    ⚠️ Approaching limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 

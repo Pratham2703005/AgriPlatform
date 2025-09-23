@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, ScaleControl, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
-import { Layers, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Layers, ZoomIn, ZoomOut, RotateCcw, LocateFixed } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
+
+// Maximum allowed area in hectares (100 km² = 10,000 hectares)
 
 // Fix for default markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -92,6 +94,28 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
     }
   };
 
+  const handleLocateMe = () => {
+  const map = mapRef.current;
+  if (!map) return;
+
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      map.flyTo([latitude, longitude], 16, {
+        animate: true,
+        duration: 2 // seconds
+      });
+    },
+    () => {
+      // Ignore errors silently
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+};
+
+
   const handleStyleChange = (style: 'hybrid' | 'satellite' | 'streets') => {
     setMapStyle(style);
     setShowStyleSelector(false);
@@ -101,7 +125,7 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
   const zoom = getZoomLevel();
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} style={{zIndex:1}}>
       <div style={{ height }} className="w-full rounded-lg overflow-hidden border">
         <MapContainer
           center={center}
@@ -118,8 +142,6 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
             attribution='&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
           />
 
-          {/* Custom Zoom Control */}
-          <ZoomControl position="bottomright" />
 
           {/* Scale Control */}
           <ScaleControl position="bottomleft" imperial={false} />
@@ -140,108 +162,98 @@ export const FarmMapView: React.FC<FarmMapViewProps> = ({
       </div>
 
       {/* Left Side Controls Panel */}
-      <div className="absolute top-4 left-4 space-y-3 z-[1000]">
-        {/* Farm Info */}
-        <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-lg shadow-lg">
-          <div className="px-3 py-2 border-b border-gray-200">
-            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Farm Info</div>
-          </div>
-          <div className="p-3">
-            <div className="text-sm font-medium text-gray-900">{farmName}</div>
-            <div className="text-xs text-gray-600 mt-1">{coordinates.length} boundary points</div>
-          </div>
-        </div>
+      <div className="absolute top-3 left-3 z-[1000] bg-white backdrop-blur-sm rounded-md shadow-lg border border-neutral-700">
+        <div className="p-2 space-y-1.5">
+          {/* Navigation Tools */}
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="Zoom In"
+          >
+            <ZoomIn className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="Zoom Out"
+          >
+            <ZoomOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={handleResetView}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="Reset View"
+          >
+            <RotateCcw className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={handleLocateMe}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="My Location"
+          >
+            <LocateFixed className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
 
-        {/* Map Controls */}
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-3 py-2 border-b border-gray-200">
-            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Map Controls</div>
-          </div>
-          <div className="p-2 space-y-1">
-            <button
-              type="button"
-              onClick={handleZoomIn}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Zoom In"
-            >
-              <ZoomIn className="h-4 w-4" />
-              <span className="text-sm">Zoom In</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleZoomOut}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Zoom Out"
-            >
-              <ZoomOut className="h-4 w-4" />
-              <span className="text-sm">Zoom Out</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleResetView}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Reset View"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span className="text-sm">Reset</span>
-            </button>
-          </div>
+          {/* Divider */}
+          <div className="h-px bg-neutral-600 my-2"></div>
+
+          {/* Map Style Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowStyleSelector(!showStyleSelector)}
+            className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
+              showStyleSelector 
+                ? 'bg-gray-100 text-black' 
+                : 'bg-white text-black hover:bg-gray-100'
+            }`}
+            title="Map Style"
+          >
+            <Layers className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
         </div>
 
         {/* Map Style Selector */}
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-3 py-2 border-b border-gray-200">
-            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Map Style</div>
-          </div>
-          <div className="p-2">
+        {showStyleSelector && (
+          <div className="absolute left-full top-0 ml-2 bg-white rounded-md shadow-lg border border-neutral-700 py-1 min-w-[100px]">
             <button
               type="button"
-              onClick={() => setShowStyleSelector(!showStyleSelector)}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Change Map Style"
+              onClick={() => handleStyleChange('hybrid')}
+              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                mapStyle === 'hybrid' 
+                  ? 'bg-white text-black' 
+                  : 'text-black hover:bg-gray-100'
+              }`}
             >
-              <Layers className="h-4 w-4" />
-              <span className="text-sm capitalize">{mapStyle}</span>
+              Hybrid
             </button>
-            {showStyleSelector && (
-              <div className="mt-2 space-y-1">
-                <button
-                  type="button"
-                  onClick={() => handleStyleChange('hybrid')}
-                  className={`w-full p-2 text-sm rounded transition-colors ${
-                    mapStyle === 'hybrid' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  Hybrid
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStyleChange('satellite')}
-                  className={`w-full p-2 text-sm rounded transition-colors ${
-                    mapStyle === 'satellite' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  Satellite
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStyleChange('streets')}
-                  className={`w-full p-2 text-sm rounded transition-colors ${
-                    mapStyle === 'streets' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  Streets
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => handleStyleChange('satellite')}
+              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                mapStyle === 'satellite' 
+                  ? 'bg-white text-black' 
+                  : 'text-black hover:bg-gray-100'
+              }`}
+            >
+              Satellite
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStyleChange('streets')}
+              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                mapStyle === 'streets' 
+                  ? 'bg-white text-black' 
+                  : 'text-black hover:bg-gray-100'
+              }`}
+            >
+              Streets
+            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

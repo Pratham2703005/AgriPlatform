@@ -1,5 +1,8 @@
 # Node.js dependencies
 node_modules
+temp
+test12_output
+pipeline_temp
 /.pnp
 .pnp.js
 

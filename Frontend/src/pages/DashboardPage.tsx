@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarms } from '../hooks/useFarms';
 import { LogOut, Plus, MapPin, Sprout, User, Crown, TrendingUp, Activity, BarChart3 } from 'lucide-react';
+import { formatHectares } from '@/utils';
 
 export default function UserDashboard() {
   const { user, logout, isGuestMode, migrationStatus } = useAuth();
@@ -261,7 +262,7 @@ export default function UserDashboard() {
 
           {/* Enhanced Stats Grid */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-            <div className="card-elevated group hover:scale-105 transition-all duration-300 p-6 animate-in">
+            <div className="card-elevated group  transition-all duration-300 p-6 animate-in">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-neutral-600 mb-1">Total Farms</p>
@@ -279,11 +280,11 @@ export default function UserDashboard() {
               </div>
             </div>
 
-            <div className="card-elevated group hover:scale-105 transition-all duration-300 p-6 animate-in stagger-1">
+            <div className="card-elevated group  transition-all duration-300 p-6 animate-in stagger-1">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-neutral-600 mb-1">Total Area</p>
-                  <p className="text-3xl font-bold text-neutral-900">{totalArea.toFixed(1)}<span className="text-lg text-neutral-600 ml-1">ha</span></p>
+                  <p className="text-3xl font-bold text-neutral-900">{formatHectares(totalArea)}<span className="text-lg text-neutral-600 ml-1">ha</span></p>
                   <div className="flex items-center mt-2">
                     <Activity className="h-3 w-3 text-secondary-600 mr-1" />
                     <span className="text-xs text-secondary-600 font-medium">Hectares managed</span>
@@ -297,7 +298,7 @@ export default function UserDashboard() {
               </div>
             </div>
 
-            <div className="card-elevated group hover:scale-105 transition-all duration-300 p-6 animate-in stagger-2">
+            <div className="card-elevated group  transition-all duration-300 p-6 animate-in stagger-2">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-neutral-600 mb-1">Crop Varieties</p>
@@ -341,7 +342,7 @@ export default function UserDashboard() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {userFarms.map((farm: any, index: number) => (
-                      <div key={farm.id} className={`card group hover:scale-105 transition-all duration-300 p-5 border-l-4 border-l-primary-500 slide-in stagger-${Math.min(index + 1, 4)}`}>
+                      <div key={farm.id} className={`card group  transition-all duration-300 p-5 border-l-4 border-l-primary-500 slide-in stagger-${Math.min(index + 1, 4)}`}>
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex-1">
                             <h4 className="text-lg font-semibold text-neutral-900 mb-1 group-hover:text-primary-600 transition-colors">{farm.name}</h4>
@@ -358,7 +359,7 @@ export default function UserDashboard() {
                         <div className="space-y-3 text-sm">
                           <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                             <span className="text-neutral-600">Area:</span>
-                            <span className="font-semibold text-neutral-900">{farm.area} hectares</span>
+                            <span className="font-semibold text-neutral-900">{formatHectares(farm.area)} hectares</span>
                           </div>
                           <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                             <span className="text-neutral-600">Planting:</span>
@@ -401,7 +402,7 @@ export default function UserDashboard() {
                     {/* Enhanced Add New Farm Card */}
                     <Link
                       to="/create-farm"
-                      className="card group hover:scale-105 transition-all duration-300 p-6 border-2 border-dashed border-primary-300 hover:border-primary-500 hover:bg-primary-50 flex flex-col items-center justify-center min-h-[300px]"
+                      className="card group  transition-all duration-300 p-6 border-2 border-dashed border-primary-300 hover:border-primary-500 hover:bg-primary-50 flex flex-col items-center justify-center min-h-[300px]"
                     >
                       <div className="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 rounded-2xl flex items-center justify-center mb-4 group-hover:from-primary-200 group-hover:to-primary-300 transition-all group-hover:scale-110">
                         <Plus className="w-8 h-8 text-primary-600 group-hover:rotate-90 transition-transform duration-300" />

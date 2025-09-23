@@ -6,6 +6,7 @@ import { useFarms } from '../hooks/useFarms';
 import { FarmMapView } from '../components/map/FarmMapView';
 import { ArrowLeft, MapPin, Calendar, Sprout, Edit, Trash2, Download, FileText, Map, Lock } from 'lucide-react';
 import { useEffect } from 'react';
+import { formatHectares } from '@/utils';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
@@ -177,7 +178,7 @@ export default function FarmDetail() {
                   <h1 className="text-3xl font-bold text-neutral-900">{farm?.name}</h1>
                   <div className="flex items-center space-x-3 mt-1">
                     <span className="badge-primary">{farm?.crop}</span>
-                    <span className="text-sm text-neutral-600">{farm?.area.toFixed(2)} hectares</span>
+                    <span className="text-sm text-neutral-600">{formatHectares(farm?.area)} hectares</span>
                   </div>
                 </div>
               </div>
@@ -241,7 +242,7 @@ export default function FarmDetail() {
                     <div className="bg-gradient-to-r from-secondary-50 to-secondary-100 rounded-xl p-4">
                       <dt className="text-sm font-medium text-neutral-700 mb-2">Total Area</dt>
                       <dd className="flex items-center text-2xl font-bold text-secondary-700">
-                        {farm?.area} <span className="text-lg text-neutral-600 ml-1">hectares</span>
+                        {formatHectares(farm?.area)} <span className="text-lg text-neutral-600 ml-1">hectares</span>
                       </dd>
                     </div>
                     

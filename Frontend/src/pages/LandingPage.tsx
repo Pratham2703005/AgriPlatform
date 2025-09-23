@@ -120,7 +120,7 @@ export function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="card-elevated group hover:scale-105 transition-all duration-300 p-8 animate-in">
+            <div className="card-elevated group  transition-all duration-300 p-8 animate-in">
               <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-white mx-auto mb-6 group-hover:shadow-glow transition-all">
                 <Map className="h-8 w-8" />
               </div>
@@ -144,7 +144,7 @@ export function LandingPage() {
               </ul>
             </div>
 
-            <div className="card-elevated group hover:scale-105 transition-all duration-300 p-8 animate-in stagger-1">
+            <div className="card-elevated group  transition-all duration-300 p-8 animate-in stagger-1">
               <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-accent-500 to-accent-700 text-white mx-auto mb-6 group-hover:shadow-glow-accent transition-all">
                 <BarChart3 className="h-8 w-8" />
               </div>
@@ -168,7 +168,7 @@ export function LandingPage() {
               </ul>
             </div>
 
-            <div className="card-elevated group hover:scale-105 transition-all duration-300 p-8 animate-in stagger-2">
+            <div className="card-elevated group  transition-all duration-300 p-8 animate-in stagger-2">
               <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-secondary-500 to-secondary-700 text-white mx-auto mb-6 group-hover:shadow-glow transition-all">
                 <Bell className="h-8 w-8" />
               </div>

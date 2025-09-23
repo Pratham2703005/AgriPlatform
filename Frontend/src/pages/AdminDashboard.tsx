@@ -6,6 +6,7 @@ import { useFarms } from '../hooks/useFarms';
 import { useFarmStore } from '../stores/farmStore';
 import { useUserStore } from '../stores/userStore';
 import { LogOut, Users, MapPin, Sprout, BarChart3, Settings, Plus, Mail, Phone, Home, Crown, TrendingUp, Activity, Zap } from 'lucide-react';
+import { formatHectares } from '@/utils';
 
 export default function AdminDashboard() {
     const [allFarmsPage, setAllFarmsPage] = useState(1);
@@ -26,7 +27,7 @@ export default function AdminDashboard() {
 
     // Use allFarms for system-wide stats, farms for My Farms
     const totalFarms = allFarms.length;
-    const totalArea = allFarms.reduce((sum, farm) => sum + farm.area, 0);
+    const totalArea:number = allFarms.reduce((sum, farm) => sum + farm.area, 0);
     const activeCrops = new Set(allFarms.map(farm => farm.crop)).size;
     
     // For admin dashboard, farms from useFarms hook are already the user's own farms
@@ -177,7 +178,7 @@ export default function AdminDashboard() {
 
                     {/* Enhanced System Stats Grid */}
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="card-elevated group hover:scale-105 transition-all duration-300 p-6 animate-in">
+                        <div className="card-elevated group  transition-all duration-300 p-6 animate-in">
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-neutral-600 mb-1">Total Users</p>
@@ -197,7 +198,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        <div className="card-elevated group hover:scale-105 transition-all duration-300 p-6 animate-in stagger-1">
+                        <div className="card-elevated group  transition-all duration-300 p-6 animate-in stagger-1">
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-neutral-600 mb-1">Admin Farms</p>
@@ -215,11 +216,11 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        <div className="card-elevated group hover:scale-105 transition-all duration-300 p-6 animate-in stagger-2">
+                        <div className="card-elevated group  transition-all duration-300 p-6 animate-in stagger-2">
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-neutral-600 mb-1">Total Area</p>
-                                    <p className="text-3xl font-bold text-neutral-900">{totalArea.toFixed(1)}<span className="text-lg text-neutral-600 ml-1">ha</span></p>
+                                    <p className="text-3xl font-bold text-neutral-900">{formatHectares(totalArea)}<span className="text-lg text-neutral-600 ml-1">ha</span></p>
                                     <div className="flex items-center mt-2">
                                         <TrendingUp className="h-3 w-3 text-accent-600 mr-1" />
                                         <span className="text-xs text-accent-600 font-medium">+15% this month</span>
@@ -233,7 +234,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        <div className="card-elevated group hover:scale-105 transition-all duration-300 p-6 animate-in stagger-3">
+                        <div className="card-elevated group  transition-all duration-300 p-6 animate-in stagger-3">
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-neutral-600 mb-1">Crop Types</p>
@@ -275,7 +276,7 @@ export default function AdminDashboard() {
                                 {myFarms.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {myFarms.map((farm, index) => (
-                                            <div key={farm.id} className={`card group hover:scale-105 transition-all duration-300 p-5 border-l-4 border-l-primary-500 slide-in stagger-${Math.min(index + 1, 4)}`}>
+                                            <div key={farm.id} className={`card group  transition-all duration-300 p-5 border-l-4 border-l-primary-500 slide-in stagger-${Math.min(index + 1, 4)}`}>
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div>
                                                         <h4 className="text-lg font-semibold text-neutral-900 mb-1 group-hover:text-primary-600 transition-colors">{farm.name}</h4>
@@ -301,7 +302,7 @@ export default function AdminDashboard() {
                                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                                         <div className="bg-neutral-50 rounded-lg p-3">
                                                             <p className="text-neutral-500 text-xs mb-1">Area</p>
-                                                            <p className="font-semibold text-neutral-900">{farm.area} ha</p>
+                                                            <p className="font-semibold text-neutral-900">{formatHectares(farm.area)} ha</p>
                                                         </div>
                                                         <div className="bg-neutral-50 rounded-lg p-3">
                                                             <p className="text-neutral-500 text-xs mb-1">Status</p>
@@ -527,7 +528,7 @@ export default function AdminDashboard() {
                                                         </div>
                                                         <div className="flex justify-between">
                                                             <span>Area:</span>
-                                                            <span className="font-medium">{farm.area} hectares</span>
+                                                            <span className="font-medium">{formatHectares(farm.area)} hectares</span>
                                                         </div>
                                                         <div className="flex justify-between">
                                                             <span>Planting:</span>

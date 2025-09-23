@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMapEvents, Polygon, ScaleControl, ZoomControl } from 'react-leaflet';
 import L, {type LeafletMouseEvent } from 'leaflet';
-import { Square, Pentagon, Check, Trash2, ZoomIn, ZoomOut, Layers, RotateCcw } from 'lucide-react';
+import { Square, Pentagon, Check, Trash2, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import './map.css';
+import { formatHectares } from '@/utils';
 
 // Fix for default markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -21,6 +22,8 @@ interface LeafletMapProps {
   className?: string;
 }
 
+// Maximum allowed area in hectares (100 km² = 10,000 hectares)
+const MAX_AREA_HECTARES = parseInt(import.meta.env.VITE_MAX_AREA_HECTARES  || "10000");
 interface DrawingControlsProps {
   onPolygonComplete: ((coordinates: number[][], area: number) => void) | undefined;
   isDrawing: boolean;
@@ -63,12 +66,23 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
             [lat2, lng1],
             [lat1, lng1] // Close the rectangle
           ];
+          
+          // Check area limit before completing
+          const area = calculatePolygonArea(rectanglePolygon);
+          if (area > MAX_AREA_HECTARES) {
+            alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
+            setIsDrawing(false);
+            setDrawingMode(null);
+            setRectangleStart(null);
+            setCurrentPolygon([]);
+            return;
+          }
+          
           setCurrentPolygon(rectanglePolygon);
           setIsDrawing(false);
           setDrawingMode(null);
           setRectangleStart(null);
 
-          const area = calculatePolygonArea(rectanglePolygon);
           const coordinates = rectanglePolygon.map(point => [point[1], point[0]]);
           if (onPolygonComplete) {
             onPolygonComplete(coordinates, area);
@@ -83,11 +97,21 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
       if (!isDrawing || drawingMode !== 'polygon' || currentPolygon.length < 3) return;
 
       e.originalEvent.preventDefault();
+      
+      // Check area limit before completing
+      const area = calculatePolygonArea(currentPolygon);
+      if (area > MAX_AREA_HECTARES) {
+        alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
+        setIsDrawing(false);
+        setDrawingMode(null);
+        setCurrentPolygon([]);
+        return;
+      }
+      
       setIsDrawing(false);
       setDrawingMode(null);
 
       // Calculate area and notify parent
-      const area = calculatePolygonArea(currentPolygon);
       const coordinates = currentPolygon.map(point => [point[1], point[0]]); // Convert to [lng, lat]
       if (onPolygonComplete) {
         onPolygonComplete(coordinates, area);
@@ -166,6 +190,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     setIsDrawing(true);
     setDrawingMode(mode);
     setCurrentPolygon([]);
+    setShowStyleSelector(false);
   };
 
   const handleClearDrawing = () => {
@@ -185,9 +210,16 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       return;
     }
 
+    // Check area limit before completing
+    const area = calculatePolygonArea(currentPolygon);
+    if (area > MAX_AREA_HECTARES) {
+      alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
+      handleClearDrawing();
+      return;
+    }
+
     setIsDrawing(false);
     setDrawingMode(null);
-    const area = calculatePolygonArea(currentPolygon);
     const coordinates = currentPolygon.map(point => [point[1], point[0]]); // Convert to [lng, lat]
     if (onPolygonComplete) {
       onPolygonComplete(coordinates, area);
@@ -212,6 +244,28 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     }
   };
 
+ const handleLocateMe = () => {
+  const map = mapRef.current;
+  if (!map) return;
+
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      map.flyTo([latitude, longitude], 16, {
+        animate: true,
+        duration: 2 // seconds
+      });
+    },
+    () => {
+      // Ignore errors silently
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+};
+
+
   const handleStyleChange = (style: 'hybrid' | 'satellite' | 'streets') => {
     setMapStyle(style);
     setShowStyleSelector(false);
@@ -230,9 +284,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   ];
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} style={{ zIndex: 1 }}>
       {/* Map Container */}
-      <div style={{ height }} className="w-full rounded-lg overflow-hidden">
+      <div style={{ height, zIndex: 1 }} className="w-full rounded-lg overflow-hidden border border-neutral-200">
         <MapContainer
           center={defaultCenter}
           zoom={Number(import.meta.env.VITE_MAP_DEFAULT_ZOOM) || 10}
@@ -247,10 +301,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             attribution='&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
           />
 
-          {/* Custom Zoom Control */}
-          <ZoomControl position="bottomright" />
-
-          {/* Scale Control */}
+          {/* Scale Control - No zoom control */}
           <ScaleControl position="bottomleft" imperial={false} />
 
           {/* Drawing Controls */}
@@ -269,10 +320,24 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             <Polygon
               positions={currentPolygon}
               pathOptions={{
-                color: '#3b82f6',
+                color: (() => {
+                  const area = calculatePolygonArea(currentPolygon);
+                  if (area > MAX_AREA_HECTARES) return '#ef4444'; // Red for over limit
+                  if (area > MAX_AREA_HECTARES * 0.8) return '#f59e0b'; // Orange for near limit
+                  return '#3b82f6'; // Blue for normal
+                })(),
                 weight: 2,
-                fillOpacity: 0.3,
-                fillColor: '#3b82f6'
+                fillOpacity: (() => {
+                  const area = calculatePolygonArea(currentPolygon);
+                  if (area > MAX_AREA_HECTARES) return 0.4; // More visible when over limit
+                  return 0.2;
+                })(),
+                fillColor: (() => {
+                  const area = calculatePolygonArea(currentPolygon);
+                  if (area > MAX_AREA_HECTARES) return '#ef4444';
+                  if (area > MAX_AREA_HECTARES * 0.8) return '#f59e0b';
+                  return '#3b82f6';
+                })()
               }}
             />
           )}
@@ -280,181 +345,194 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       </div>
 
       {/* Left Side Controls Panel */}
-      <div className="absolute top-4 left-4 space-y-3 z-[1000]">
-        {/* Drawing Tools */}
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-3 py-2 border-b border-gray-200">
-            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Drawing Tools</div>
-          </div>
-          <div className="p-2 space-y-1">
-            {!isDrawing ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => handleStartDrawing('polygon')}
-                  className="w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center space-x-2 transition-colors"
-                  title="Draw Polygon"
-                >
-                  <Pentagon className="h-4 w-4" />
-                  <span className="text-sm">Polygon</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStartDrawing('rectangle')}
-                  className="w-full p-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center justify-center space-x-2 transition-colors"
-                  title="Draw Rectangle"
-                >
-                  <Square className="h-4 w-4" />
-                  <span className="text-sm">Rectangle</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="text-xs text-gray-600 text-center py-1">
-                  Drawing {drawingMode} ({currentPolygon.length} points)
-                </div>
-                {drawingMode === 'polygon' && (
-                  <button
-                    type="button"
-                    onClick={handleFinishDrawing}
-                    disabled={currentPolygon.length < 3}
-                    className="w-full p-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
-                    title="Finish Drawing"
-                  >
-                    <Check className="h-4 w-4" />
-                    <span className="text-sm">Finish</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleClearDrawing}
-                  className="w-full p-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center space-x-2 transition-colors"
-                  title="Clear Drawing"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="text-sm">Clear</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+      <div className="absolute top-3 left-3 z-[1000] bg-white rounded-md shadow-lg border border-neutral-700">
+        <div className="p-2 space-y-1.5">
+          {!isDrawing ? (
+            <>
+              {/* Drawing Tools */}
+              <button
+                type="button"
+                onClick={() => handleStartDrawing('polygon')}
+                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+                title="Draw Polygon"
+              >
+                <Pentagon className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStartDrawing('rectangle')}
+                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+                title="Draw Rectangle"
+              >
+                <Square className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
 
-        {/* Map Controls */}
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-3 py-2 border-b border-gray-200">
-            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Map Controls</div>
-          </div>
-          <div className="p-2 space-y-1">
-            <button
-              type="button"
-              onClick={handleZoomIn}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Zoom In"
-            >
-              <ZoomIn className="h-4 w-4" />
-              <span className="text-sm">Zoom In</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleZoomOut}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Zoom Out"
-            >
-              <ZoomOut className="h-4 w-4" />
-              <span className="text-sm">Zoom Out</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleResetView}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Reset View"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span className="text-sm">Reset</span>
-            </button>
-          </div>
+
+              {/* Navigation Tools */}
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+                title="Zoom In"
+              >
+                <ZoomIn className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+                title="Zoom Out"
+              >
+                <ZoomOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
+              <button
+                type="button"
+                onClick={handleResetView}
+                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+                title="Reset View"
+              >
+                <RotateCcw className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
+              <button
+                type="button"
+                onClick={handleLocateMe}
+                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+                title="My Location"
+              >
+                <LocateFixed className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
+
+              {/* Map Style Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowStyleSelector(!showStyleSelector)}
+                className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
+                  showStyleSelector 
+                    ? 'bg-gray-100 text-black' 
+                    : 'bg-white text-black hover:bg-gray-100'
+                }`}
+                title="Map Style"
+              >
+                <Layers className="h-4 w-4 group-hover:scale-110 transition-transform" />
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Drawing Status */}
+              <div className="text-xs text-gray-700 text-center py-1 px-2 bg-gray-200 rounded-sm">
+                {drawingMode} ({currentPolygon.length})
+              </div>
+
+              {/* Drawing Actions */}
+              {drawingMode === 'polygon' && (
+                <button
+                  type="button"
+                  onClick={handleFinishDrawing}
+                  disabled={currentPolygon.length < 3}
+                  className="w-full px-2 py-1.5 bg-emerald-600 text-white rounded-sm hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1 transition-all duration-200 text-xs font-medium"
+                  title="Finish Drawing"
+                >
+                  <Check className="h-3 w-3" />
+                  <span>Finish</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleClearDrawing}
+                className="w-full px-2 py-1.5 bg-red-600 text-white rounded-sm hover:bg-red-500 flex items-center justify-center space-x-1 transition-all duration-200 text-xs font-medium"
+                title="Clear Drawing"
+              >
+                <Trash2 className="h-3 w-3" />
+                <span>Clear</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Map Style Selector */}
-        <div className="bg-white rounded-lg shadow-lg">
-          <div className="px-3 py-2 border-b border-gray-200">
-            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Map Style</div>
-          </div>
-          <div className="p-2">
+        {showStyleSelector && !isDrawing && (
+          <div className="absolute left-full top-0 ml-2 bg-white rounded-md shadow-lg border border-neutral-700 py-1 min-w-[100px]">
             <button
               type="button"
-              onClick={() => setShowStyleSelector(!showStyleSelector)}
-              className="w-full p-2 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center space-x-2 transition-colors"
-              title="Change Map Style"
+              onClick={() => handleStyleChange('hybrid')}
+              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                mapStyle === 'hybrid' 
+                  ? 'bg-gray-100 text-black' 
+                  : 'bg-white text-black hover:bg-gray-100'
+              }`}
             >
-              <Layers className="h-4 w-4" />
-              <span className="text-sm capitalize">{mapStyle}</span>
+              Hybrid
             </button>
-            {showStyleSelector && (
-              <div className="mt-2 space-y-1">
-                <button
-                  type="button"
-                  onClick={() => handleStyleChange('hybrid')}
-                  className={`w-full p-2 text-sm rounded transition-colors ${
-                    mapStyle === 'hybrid' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  Hybrid
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStyleChange('satellite')}
-                  className={`w-full p-2 text-sm rounded transition-colors ${
-                    mapStyle === 'satellite' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  Satellite
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStyleChange('streets')}
-                  className={`w-full p-2 text-sm rounded transition-colors ${
-                    mapStyle === 'streets' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  Streets
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => handleStyleChange('satellite')}
+              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                mapStyle === 'satellite' 
+                  ? 'bg-gray-100 text-black' 
+                  : 'bg-white text-black hover:bg-gray-100'
+              }`}
+            >
+              Satellite
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStyleChange('streets')}
+              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                mapStyle === 'streets' 
+                  ? 'bg-gray-100 text-black' 
+                  : 'bg-white text-black hover:bg-gray-100'
+              }`}
+            >
+              Streets
+            </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Status Display */}
       {currentPolygon.length > 0 && (
-        <div className="absolute bottom-4 left-4 bg-white px-3 py-2 rounded-lg shadow-lg text-sm z-[1000]">
-          <div className="font-medium">Points: {currentPolygon.length}</div>
-          {currentPolygon.length > 2 && (
-            <div className="text-green-600">
-              Area: {calculatePolygonArea(currentPolygon)} hectares
-            </div>
-          )}
+        <div className="absolute bottom-3 right-3 bg-white text-black px-3 py-2 rounded-md shadow-lg border border-neutral-700 text-sm z-[1000]">
+          <div className="font-medium text-black">Points: {currentPolygon.length}</div>
+          {currentPolygon.length > 2 && (() => {
+            const area = calculatePolygonArea(currentPolygon);
+            const isOverLimit = area > MAX_AREA_HECTARES;
+            const isNearLimit = area > MAX_AREA_HECTARES * 0.8;
+            
+            return (
+              <>
+                <div className={`font-medium ${
+                  isOverLimit ? 'text-red-400' : isNearLimit ? 'text-orange-400' : 'text-emerald-400'
+                }`}>
+                  Area: {formatHectares(area)} ha
+                </div>
+                {isOverLimit && (
+                  <div className="text-red-400 text-xs mt-1 font-medium">
+                    ⚠️ Exceeds limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
+                  </div>
+                )}
+                {isNearLimit && !isOverLimit && (
+                  <div className="text-orange-400 text-xs mt-1">
+                    ⚠️ Approaching limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
       {/* Instructions */}
       {isDrawing && (
-        <div className="absolute top-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg text-sm max-w-xs z-[1000] shadow-lg">
-          <div className="font-semibold mb-2 flex items-center">
+        <div className="absolute top-3 right-3 bg-white text-black px-4 py-3 rounded-md max-w-xs z-[1000] shadow-lg border border-neutral-700">
+          <div className="font-medium mb-2 flex items-center text-black">
             {drawingMode === 'polygon' ? (
-              <Pentagon className="h-4 w-4 mr-2" />
+              <Pentagon className="h-4 w-4 mr-2 text-emerald-400" />
             ) : (
-              <Square className="h-4 w-4 mr-2" />
+              <Square className="h-4 w-4 mr-2 text-emerald-400" />
             )}
             Drawing {drawingMode}
           </div>
-          <div className="text-xs leading-relaxed">
+          <div className="text-xs leading-relaxed text-black">
             {drawingMode === 'polygon' ? (
               <>
                 • Click to add points<br />
@@ -466,7 +544,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
               <>
                 • Click first corner<br />
                 • Click opposite corner<br />
-                • Rectangle will be created automatically
+                • Rectangle created automatically
               </>
             )}
           </div>

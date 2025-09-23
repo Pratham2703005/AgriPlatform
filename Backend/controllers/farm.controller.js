@@ -1,3 +1,10 @@
+const Farm = require("../models/farm.model.js");
+const ResponseEntity = require("../utils/ResponseEntity.js");
+const path = require("path");
+const { prepareData } = require("../utils/prepareData");
+const { centroidFromRing } = require("../utils/geometry");
+
+
 // Get all farms in the system (admin only)
 const getAllFarms = async (req, res) => {
   try {
@@ -31,29 +38,16 @@ const getAllFarms = async (req, res) => {
     res.status(500).json(response);
   }
 };
-const Farm = require("../models/farm.model.js");
-const ResponseEntity = require("../utils/ResponseEntity.js");
-
 // Get all farms for authenticated user
 const getFarms = async (req, res) => {
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-
-    // Debug log: print userId
-    console.log("[getFarms] userId:", userId);
-
     // Get farms with pagination
     const farms = await Farm.findByUserId(userId, { page, limit });
-
-    // Debug log: print found farms
-    console.log("[getFarms] farms found:", farms);
-
-    // Get total count for pagination
     const total = await Farm.countDocuments({ userId });
     const totalPages = Math.ceil(total / limit);
-
     const response = new ResponseEntity(1, "Farms retrieved successfully", {
       farms,
       pagination: {
@@ -104,8 +98,6 @@ const getFarm = async (req, res) => {
 const createFarm = async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log("userId", userId);
-    console.log("req.body", req.body);
 
     if (!req.body) {
       const response = new ResponseEntity(0, "No request body provided", {});
@@ -145,7 +137,6 @@ const createFarm = async (req, res) => {
       return res.status(400).json(response);
     }
 
-    // Ensure the polygon is closed (first point equals last point)
     let closedCoordinates = [...coordinates];
     const firstPoint = coordinates[0];
     const lastPoint = coordinates[coordinates.length - 1];
@@ -169,12 +160,13 @@ const createFarm = async (req, res) => {
       return res.status(400).json(response);
     }
 
-    // Convert coordinates to GeoJSON format with closed polygon
     const geoJsonCoordinates = {
       type: "Polygon",
       coordinates: [closedCoordinates], // Wrap closed coordinates in an array for GeoJSON Polygon format
     };
 
+    const centroid = centroidFromRing(closedCoordinates);
+    console.log("CENTROID: ", centroid);
     const farmData = {
       name: name.trim(),
       crop: crop.trim(),
@@ -186,9 +178,59 @@ const createFarm = async (req, res) => {
       coordinates: geoJsonCoordinates, // Use the GeoJSON format
     };
 
+    const defaults = {
+      satelliteConfig: {
+        cloudThreshold: 50,
+        dateRangeMonths: 5,
+        scale: 10,
+        bands: ["B2", "B3", "B4", "B5", "B8", "B11"],
+        bandNames: ["Blue_B2", "Green_B3", "Red_B4", "RedEdge_B5", "NIR_B8", "SWIR_B11"],
+      },
+      sensorConfig: {
+        scale: 1000,
+        assets: {
+          ECe: "projects/pk07007/assets/ECe",
+          N: "projects/pk07007/assets/N",
+          P: "projects/pk07007/assets/P",
+          OC: "projects/pk07007/assets/OC",
+          pH: "projects/pk07007/assets/pH",
+        },
+      },
+      weatherConfig: {
+        forecastDays: 3,
+        fields: [
+          "temperature",
+          "humidity",
+          "pressure",
+          "windSpeed",
+          "windDirection",
+          "precipitation",
+          "cloudCover",
+        ],
+      },
+    };
+
+    let dataPrep = null;
+    try {
+      dataPrep = await prepareData({
+        areaName: name.trim(),
+        polygon: closedCoordinates,
+        center: centroid,
+        satelliteConfig: defaults.satelliteConfig,
+        sensorConfig: defaults.sensorConfig,
+        weatherConfig: defaults.weatherConfig,
+        tempDir: path.join(__dirname, "..", "temp"),
+      });
+    } catch (e) {
+      dataPrep = { error: e.message };
+    }
+
     const farm = await Farm.create(farmData);
 
-    const response = new ResponseEntity(1, "Farm created successfully", farm);
+    const response = new ResponseEntity(1, "Farm created successfully", {
+      farm,
+      dataPrep,
+    });
     res.status(201).json(response);
   } catch (error) {
     console.error("Error creating farm:", error);
@@ -212,61 +254,44 @@ const updateFarm = async (req, res) => {
 
     const farm = await Farm.findById(farmId);
     if (!farm) {
-      const response = new ResponseEntity(0, "Farm not found", {});
-      return res.status(404).json(response);
+      return res.status(404).json(new ResponseEntity(0, "Farm not found", {}));
     }
-
-    console.log(!farm.isOwnedBy(userId));
 
     // Check if user owns this farm
     if (!farm.isOwnedBy(userId) && req.user.role !== "admin") {
-      const response = new ResponseEntity(0, "Access denied", {});
-      return res.status(403).json(response);
+      return res.status(403).json(new ResponseEntity(0, "Access denied", {}));
     }
 
-    // Validate dates if provided
+    // Validate dates
     if (updateData.plantingDate && updateData.harvestDate) {
       const plantDate = new Date(updateData.plantingDate);
       const harvestDate = new Date(updateData.harvestDate);
 
       if (plantDate >= harvestDate) {
-        const response = new ResponseEntity(
-          0,
-          "Harvest date must be after planting date",
-          {}
+        return res.status(400).json(
+          new ResponseEntity(0, "Harvest date must be after planting date", {})
         );
-        return res.status(400).json(response);
       }
     }
 
-    // Handle coordinates update if provided
+    // Handle coordinates
     if (updateData.coordinates) {
-      // Validate coordinates
-      if (
-        !Array.isArray(updateData.coordinates) ||
-        updateData.coordinates.length < 3
-      ) {
-        const response = new ResponseEntity(
-          0,
-          "Invalid coordinates. Must be an array with at least 3 points",
-          {}
+      const coords = updateData.coordinates.coordinates;
+
+      if (!Array.isArray(coords) || !Array.isArray(coords[0]) || coords[0].length < 3) {
+        return res.status(400).json(
+          new ResponseEntity(0, "Invalid coordinates. Must be an array with at least 3 points", {})
         );
-        return res.status(400).json(response);
       }
 
-      // Ensure the polygon is closed (first point equals last point)
-      let closedCoordinates = [...updateData.coordinates];
-      const firstPoint = updateData.coordinates[0];
-      const lastPoint =
-        updateData.coordinates[updateData.coordinates.length - 1];
+      let closedCoordinates = [...coords[0]];
+      const firstPoint = closedCoordinates[0];
+      const lastPoint = closedCoordinates[closedCoordinates.length - 1];
 
-      // Check if first and last points are the same
       if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
-        // If not, add the first point at the end to close the loop
         closedCoordinates.push([...firstPoint]);
       }
 
-      // Update the coordinates in GeoJSON format
       updateData.coordinates = {
         type: "Polygon",
         coordinates: [closedCoordinates],
@@ -279,24 +304,19 @@ const updateFarm = async (req, res) => {
       runValidators: true,
     });
 
-    const response = new ResponseEntity(
-      1,
-      "Farm updated successfully",
-      updatedFarm
-    );
-    res.status(200).json(response);
+    return res
+      .status(200)
+      .json(new ResponseEntity(1, "Farm updated successfully", updatedFarm));
   } catch (error) {
     console.error("Error updating farm:", error);
 
     if (error.name === "ValidationError") {
-      const response = new ResponseEntity(0, error.message, {});
-      return res.status(400).json(response);
+      return res.status(400).json(new ResponseEntity(0, error.message, {}));
     }
 
-    const response = new ResponseEntity(0, "Error updating farm", {
-      error: error.message,
-    });
-    res.status(500).json(response);
+    return res
+      .status(500)
+      .json(new ResponseEntity(0, "Error updating farm", { error: error.message }));
   }
 };
 

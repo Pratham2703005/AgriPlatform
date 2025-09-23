@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
+// Maximum allowed area in hectares (100 km² = 10,000 hectares)
+const MAX_AREA_HECTARES = parseInt(import.meta.env.VITE_MAX_AREA_HECTARES || "10000");
 // Set Mapbox access token from environment variables
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZGVtby11c2VyIiwiYSI6ImNsZXhhbXBsZSJ9.example';
 
@@ -139,6 +141,20 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             if (!isDrawing || currentPolygon.length < 3) return;
 
             e.preventDefault();
+            
+            // Calculate area and check limit before completing
+            const area = calculatePolygonArea(currentPolygon);
+            if (area > MAX_AREA_HECTARES) {
+                alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
+                setIsDrawing(false);
+                setCurrentPolygon([]);
+                updatePolygonDisplay([]);
+                if (map.current) {
+                    map.current.getCanvas().style.cursor = '';
+                }
+                return;
+            }
+            
             setIsDrawing(false);
 
             // Close the polygon
@@ -153,8 +169,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 map.current.getCanvas().style.cursor = '';
             }
 
-            // Calculate area and notify parent
-            const area = calculatePolygonArea(currentPolygon);
+            // Notify parent
             if (onPolygonComplete) {
                 onPolygonComplete(currentPolygon, area);
             }
@@ -235,9 +250,29 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             {currentPolygon.length > 0 && (
                 <div className="absolute bottom-4 left-4 bg-white px-3 py-2 rounded-lg shadow-lg text-sm">
                     <div>Points: {currentPolygon.length}</div>
-                    {currentPolygon.length > 2 && (
-                        <div>Area: {calculatePolygonArea(currentPolygon)} hectares</div>
-                    )}
+                    {currentPolygon.length > 2 && (() => {
+                        const area = calculatePolygonArea(currentPolygon);
+                        const isOverLimit = area > MAX_AREA_HECTARES;
+                        const isNearLimit = area > MAX_AREA_HECTARES * 0.8;
+                        
+                        return (
+                            <>
+                                <div className={isOverLimit ? 'text-red-600' : isNearLimit ? 'text-orange-600' : 'text-green-600'}>
+                                    Area: {area} hectares
+                                </div>
+                                {isOverLimit && (
+                                    <div className="text-red-600 text-xs mt-1 font-medium">
+                                        ⚠️ Exceeds limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
+                                    </div>
+                                )}
+                                {isNearLimit && !isOverLimit && (
+                                    <div className="text-orange-600 text-xs mt-1">
+                                        ⚠️ Approaching limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             )}
         </div>

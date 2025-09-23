@@ -34,6 +34,7 @@ export interface FarmState {
     totalPages: number;
   };
   fetchFarms: (page?: number, limit?: number) => Promise<void>;
+  fetchAllFarms: (page?: number, limit?: number) => Promise<void>;
   addFarm: (
     farmData: FarmFormData,
     coordinates: number[][],

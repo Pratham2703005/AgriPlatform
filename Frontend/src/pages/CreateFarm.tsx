@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarms } from '../hooks/useFarms';
 import type { FarmFormData } from '../types/farm';
 import { CROP_OPTIONS } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
-import { ArrowLeft, Sprout, MapPin, Calendar, Save, X, Plus, FileText, User, Activity, Map } from 'lucide-react';
+import { ArrowLeft, Sprout, MapPin, Calendar, Plus, FileText, User, Activity, Map } from 'lucide-react';
+import { formatHectares } from '@/utils';
 
 export const CreateFarm: React.FC = () => {
   const navigate = useNavigate();
   const { isGuestMode } = useAuth();
-  const { addFarm, fetchFarms, loading, error } = useFarms();
+  const { addFarm, loading, error } = useFarms();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
-  const [showMap, setShowMap] = useState(false);
+
 
   const {
     register,
@@ -44,7 +45,7 @@ export const CreateFarm: React.FC = () => {
   return (
     <div className="min-h-screen gradient-mesh">
       {/* Enhanced Header */}
-      <header className="glass border-b border-white/10 sticky top-0 z-40">
+      <header className="glass border-b border-white/10 sticky top-0 z-402">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center animate-in">
@@ -222,25 +223,17 @@ export const CreateFarm: React.FC = () => {
                     Use the interactive map to draw your farm boundary and calculate area
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowMap(!showMap)}
-                  className={`btn-secondary group ${showMap ? 'bg-accent-50 text-accent-700 border-accent-300' : ''}`}
-                >
-                  <Map className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-                  {showMap ? 'Hide Map' : 'Show Interactive Map'}
-                </button>
+                {/* Map is always visible */}
               </div>
 
-              {showMap && (
-                <div className="space-y-6">
-                  <div className="rounded-xl overflow-hidden border border-neutral-200 shadow-soft">
-                    <LeafletMap
-                      onPolygonComplete={handlePolygonComplete}
-                      height="500px"
-                      className="w-full"
-                    />
-                  </div>
+              <div className="space-y-6">
+                <div className="rounded-xl overflow-hidden border border-neutral-200 shadow-soft">
+                  <LeafletMap
+                    onPolygonComplete={handlePolygonComplete}
+                    height="500px"
+                    className="w-full"
+                  />
+                </div>
                   
                   {coordinates.length > 0 && (
                     <div className="card bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-l-green-500 p-6 animate-in">
@@ -251,7 +244,7 @@ export const CreateFarm: React.FC = () => {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-green-800">Calculated Area</p>
-                            <p className="text-lg font-bold text-green-700">{area.toFixed(2)} hectares</p>
+                            <p className="text-lg font-bold text-green-700">{formatHectares(area)} hectares</p>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -270,10 +263,11 @@ export const CreateFarm: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-              )}
+              </div>
+              
+            
 
-              {!showMap && coordinates.length === 0 && (
+              {coordinates.length === 0 && (
                 <div className="card bg-gradient-to-r from-amber-50 to-orange-100 border-l-4 border-l-amber-500 p-6">
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0">

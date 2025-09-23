@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen gradient-mesh flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
+      <div className="max-w-lg w-full">
         {/* Enhanced Header */}
         <div className="text-center mb-8 animate-in">
           <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 shadow-glow mb-6">
@@ -46,7 +46,7 @@ export default function LoginPage() {
 
         {/* Enhanced Form Card */}
         <div className="card-elevated p-8 animate-in stagger-1">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
               <div className="card-elevated bg-red-50 border-l-4 border-l-red-500 p-4 animate-in">
                 <div className="flex items-start space-x-3">
@@ -60,7 +60,7 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
                   Email address
                 </label>
                 <input
@@ -77,7 +77,7 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
                   Password
                 </label>
                 <div className="relative">
@@ -145,30 +145,6 @@ export default function LoginPage() {
               Sign up here
             </Link>
           </p>
-        </div>
-
-        {/* Enhanced Demo Credentials */}
-        <div className="mt-6 card p-5 bg-gradient-to-br from-accent-50 to-accent-100 border-l-4 border-l-accent-500 animate-in stagger-3">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <div className="h-8 w-8 rounded-lg bg-accent-200 flex items-center justify-center">
-                <Shield className="h-4 w-4 text-accent-700" />
-              </div>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-accent-800 mb-2">Demo Credentials</h3>
-              <div className="text-xs text-accent-700 space-y-2">
-                <div className="flex justify-between items-center p-2 bg-white/50 rounded-lg">
-                  <span className="font-medium">Admin:</span>
-                  <span>admin@farm.com / admin123</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-white/50 rounded-lg">
-                  <span className="font-medium">User:</span>
-                  <span>farmer@farm.com / farmer123</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
