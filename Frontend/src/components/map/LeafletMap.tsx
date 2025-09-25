@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, useMapEvents, Polygon, ScaleControl, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, useMapEvents, Polygon, ScaleControl } from 'react-leaflet';
 import L, {type LeafletMouseEvent } from 'leaflet';
 import { Square, Pentagon, Check, Trash2, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
@@ -286,7 +286,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   return (
     <div className={`relative ${className}`} style={{ zIndex: 1 }}>
       {/* Map Container */}
-      <div style={{ height, zIndex: 1 }} className="w-full rounded-lg overflow-hidden border border-neutral-200">
+      <div style={{ height}} className="w-full rounded-lg overflow-hidden border border-neutral-200">
         <MapContainer
           center={defaultCenter}
           zoom={Number(import.meta.env.VITE_MAP_DEFAULT_ZOOM) || 10}

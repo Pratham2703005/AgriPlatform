@@ -30,7 +30,12 @@ export function formatArea(hectares: number, unit: 'metric' | 'imperial' = 'metr
   }
   return `${hectares.toFixed(2)} ha`;
 }
-export function formatHectares(value: number) {
+export function formatHectares(value: number | undefined | null): string {
+  // Handle undefined/null values
+  if (value === undefined || value === null || isNaN(value)) {
+    return "0.0";
+  }
+  
   if (value >= 1e12) return (value / 1e12).toFixed(1) + "Tri";
   if (value >= 1e9)  return (value / 1e9).toFixed(1) + "Bil";
   if (value >= 1e6)  return (value / 1e6).toFixed(1) + "Mil";

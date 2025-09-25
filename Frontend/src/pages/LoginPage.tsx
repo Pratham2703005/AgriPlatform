@@ -20,6 +20,8 @@ export default function LoginPage() {
     const result = await login(email, password);
     
     if (result.success) {
+      // Wait a moment to ensure auth state is fully updated
+      await new Promise(resolve => setTimeout(resolve, 300));
       navigate('/dashboard');
     } else {
       setError(result.error || 'Login failed');

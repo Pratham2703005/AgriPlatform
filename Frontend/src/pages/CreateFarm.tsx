@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,7 @@ import { CROP_OPTIONS } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
 import { ArrowLeft, Sprout, MapPin, Calendar, Plus, FileText, User, Activity, Map } from 'lucide-react';
 import { formatHectares } from '@/utils';
+import cropData from '@/assets/p.json';
 
 export const CreateFarm: React.FC = () => {
   const navigate = useNavigate();
@@ -21,10 +22,25 @@ export const CreateFarm: React.FC = () => {
     register,
     handleSubmit,
     formState: { errors },
-    watch
+    watch,
+    setValue
   } = useForm<FarmFormData>();
 
   const plantingDate = watch('plantingDate');
+  const selectedCrop = watch('crop');
+
+  // Auto-calculate harvest date when planting date or crop changes
+  useEffect(() => {
+    if (plantingDate && selectedCrop) {
+      const cropInfo = cropData.find(crop => crop.name === selectedCrop);
+      if (cropInfo) {
+        const planting = new Date(plantingDate);
+        const harvestDate = new Date(planting.getTime() + (cropInfo.min_duration * 24 * 60 * 60 * 1000));
+        const harvestDateString = harvestDate.toISOString().split('T')[0];
+        (setValue as any)('harvestDate', harvestDateString);
+      }
+    }
+  }, [plantingDate, selectedCrop, setValue]);
 
   const onSubmit = async (data: FarmFormData) => {
     if (coordinates.length === 0) {
@@ -32,9 +48,22 @@ export const CreateFarm: React.FC = () => {
       return;
     }
 
-    // The unified hook handles guest vs authenticated mode automatically
-    await addFarm(data, coordinates, area);
-    navigate('/dashboard');
+    // Prevent double submission
+    if (loading) {
+      console.log('Farm creation already in progress, ignoring duplicate submission');
+      return;
+    }
+
+    console.log('Creating farm with data:', data);
+
+    try {
+      // The unified hook handles guest vs authenticated mode automatically
+      await addFarm(data, coordinates, area);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error creating farm:', error);
+      // Error will be handled by the farm store
+    }
   };
 
   const handlePolygonComplete = (coords: number[][], calculatedArea: number) => {
@@ -45,7 +74,7 @@ export const CreateFarm: React.FC = () => {
   return (
     <div className="min-h-screen gradient-mesh">
       {/* Enhanced Header */}
-      <header className="glass border-b border-white/10 sticky top-0 z-402">
+      <header className="glass border-b border-white/10 sticky top-0 z-[2000]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center animate-in">
@@ -188,6 +217,12 @@ export const CreateFarm: React.FC = () => {
                     />
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
                   </div>
+                  {selectedCrop && plantingDate && (
+                    <p className="text-xs text-green-600 flex items-center">
+                      <Activity className="h-3 w-3 mr-1" />
+                      Auto-calculated based on {selectedCrop} minimum growing duration (editable)
+                    </p>
+                  )}
                   {errors.harvestDate && (
                     <p className="text-red-500 text-sm flex items-center">
                       <Activity className="h-3 w-3 mr-1" />
@@ -313,7 +348,7 @@ export const CreateFarm: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || coordinates.length === 0}
-                className="btn-primary btn-lg group"
+                className="btn-primary btn-lg group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <div className="flex items-center">

@@ -1,11 +1,10 @@
 import { useState, useRef } from 'react';
-import { MapContainer, TileLayer, Polygon, ScaleControl, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, ScaleControl } from 'react-leaflet';
 import L from 'leaflet';
 import { Layers, ZoomIn, ZoomOut, RotateCcw, LocateFixed } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 // Maximum allowed area in hectares (100 km² = 10,000 hectares)
-
 // Fix for default markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -23,7 +22,6 @@ interface FarmMapViewProps {
 
 export const FarmMapView: React.FC<FarmMapViewProps> = ({
   coordinates,
-  farmName,
   height = '400px',
   className = ''
 }) => {

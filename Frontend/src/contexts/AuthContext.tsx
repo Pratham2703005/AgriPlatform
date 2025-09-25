@@ -135,6 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         
+        // Small delay to ensure user context is properly set before navigation
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         return { success: true };
       } else {
         console.log('❌ Login failed:', response.message);

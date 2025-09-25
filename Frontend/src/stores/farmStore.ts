@@ -30,8 +30,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       });
     }
   },
-  guestMode:
-    typeof window !== 'undefined' && !localStorage.getItem('auth_token'),
+  guestMode: typeof window !== 'undefined' && !localStorage.getItem('auth_token'),
   farms: [],
   allFarms: [],
   currentFarm: null,
@@ -44,40 +43,52 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     totalPages: 0,
   },
   fetchFarms: async (page = 1, limit = 10) => {
-    // Check current authentication status dynamically
-    const isAuthenticated = !!(
-      typeof window !== 'undefined' &&
-      localStorage.getItem('auth_token') &&
-      localStorage.getItem('auth_user')
-    );
-
-    // Use guest mode if not authenticated
-    if (!isAuthenticated || get().guestMode) {
-      set({ loading: true, error: null, guestMode: true });
-      const guestFarms = loadGuestFarms().map(farm => ({
-        ...farm,
-        userId: 'guest',
-      }));
-      set({
-        farms: guestFarms,
-        loading: false,
-        pagination: {
-          page: 1,
-          limit: 100,
-          total: guestFarms.length,
-          totalPages: 1,
-        },
-      });
+    // Prevent multiple simultaneous calls
+    
+    if (get().loading) {
       return;
     }
-
+    
     try {
+      // Check current authentication status dynamically
+      const isAuthenticated = !!(
+        typeof window !== 'undefined' &&
+        localStorage.getItem('auth_token') &&
+        localStorage.getItem('auth_user')
+      );
+      
+      console.log('🏠 farmStore: fetchFarms - isAuthenticated:', isAuthenticated, 'current guestMode:', get().guestMode);
+      
+      // Use guest mode if not authenticated
+      if (!isAuthenticated) {
+        console.log('👨‍💼 farmStore: User not authenticated, using guest mode');
+        set({ loading: true, error: null, guestMode: true });
+        const guestFarms = loadGuestFarms().map(farm => ({
+          ...farm,
+          userId: 'guest',
+        }));
+        set({
+          farms: guestFarms,
+          loading: false,
+          pagination: {
+            page: 1,
+            limit: 100,
+            total: guestFarms.length,
+            totalPages: 1,
+          },
+        });
+        return;
+      }
+
+      // User is authenticated - fetch from API and ensure guestMode is false
+      console.log('🔐 farmStore: User authenticated, fetching from API');
       set({ loading: true, error: null, guestMode: false });
-      // Always fetch current user's farms for My Farms (admin and normal users)
       const response = await FarmAPI.getFarms(page, limit);
+      
       if (response.code === 1) {
         const { farms, pagination } = response.result;
         const transformedFarms = farms.map(FarmAPI.transformFromApiFormat);
+        console.log('✅ farmStore: Successfully fetched', transformedFarms.length, 'authenticated user farms');
         set({ farms: transformedFarms, pagination, loading: false });
       } else {
         set({
@@ -86,7 +97,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         });
       }
     } catch (error: any) {
-      console.error('Error fetching farms:', error);
+      console.error('❌ farmStore: Error fetching farms:', error);
       set({ error: error.message || 'Failed to fetch farms', loading: false });
     }
   },
@@ -95,7 +106,16 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     coordinates: number[][],
     area: number
   ) => {
+    // Prevent duplicate farm creation
+    if (get().loading) {
+      console.log('❌ Farm creation already in progress, skipping duplicate call');
+      return;
+    }
+    
+    console.log('🌱 farmStore: Starting farm creation', { farmData, area });
+    
     if (get().guestMode) {
+      console.log('👻 farmStore: Creating guest farm');
       set({ loading: true, error: null });
       GuestFarmStorage.addFarm(
         farmData,
@@ -106,33 +126,54 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         ...farm,
         userId: 'guest',
       }));
+      console.log('✅ farmStore: Guest farm created, total farms:', guestFarms.length);
       set({ farms: guestFarms, loading: false });
       return;
     }
+    
     try {
+      console.log('🔐 farmStore: Creating authenticated user farm');
       set({ loading: true, error: null });
+      
       const createRequest = FarmAPI.transformToApiFormat({
         ...farmData,
         coordinates,
         area: area || calculatePolygonArea(coordinates),
       });
+      
+      console.log('📤 farmStore: Sending API request to create farm');
       const response = await FarmAPI.createFarm(createRequest);
+      
       if (response.code === 1) {
-        // Force refetch farms from backend after creation
-        await get().fetchFarms();
-        // Also refetch all farms for admin dashboard
-        if (typeof get().fetchAllFarms === 'function') {
-          await get().fetchAllFarms();
-        }
-        set({ loading: false });
+        console.log('✅ farmStore: Farm created successfully via API');
+        // Add the new farm directly to the state instead of refetching
+        const newFarm = FarmAPI.transformFromApiFormat(response.result);
+        const currentFarms = get().farms;
+        
+        console.log('📝 farmStore: Adding farm to state, current farms:', currentFarms.length);
+        set({ 
+          farms: [...currentFarms, newFarm],
+          loading: false 
+        });
+        console.log('✅ farmStore: Farm added to state, new total:', currentFarms.length + 1);
+        
+        // Remove the fetchAllFarms call that might be causing duplication
+        // Only refetch all farms for admin dashboard if function exists and not already loading
+        // if (typeof get().fetchAllFarms === 'function') {
+        //   // Use setTimeout to prevent potential infinite loops
+        //   setTimeout(() => {
+        //     get().fetchAllFarms();
+        //   }, 100);
+        // }
       } else {
+        console.error('❌ farmStore: Farm creation failed:', response.message);
         set({
           error: response.message || 'Failed to create farm',
           loading: false,
         });
       }
     } catch (error: any) {
-      console.error('Error creating farm:', error);
+      console.error('❌ farmStore: Error creating farm:', error);
       set({ error: error.message || 'Failed to create farm', loading: false });
     }
   },

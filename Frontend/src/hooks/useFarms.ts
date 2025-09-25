@@ -9,7 +9,7 @@ import type { Farm, FarmFormData } from '../types/farm';
  * authenticated user farms (API-based) and guest farms (localStorage-based)
  */
 export const useFarms = () => {
-  const { user, isGuestMode, isAuthenticated } = useAuth();
+  const { user, isGuestMode } = useAuth();
 
   // API-based farm store for authenticated users
   const {
@@ -44,8 +44,9 @@ export const useFarms = () => {
   } = useGuestFarmStore();
 
   // Determine which store to use
-  // Use guest mode if isGuestMode is true and user is NOT authenticated
   const isUsingGuestMode = isGuestMode;
+  
+  console.log('🌍 useFarms: Store selection', { isGuestMode, isUsingGuestMode, userId: user?.id });
 
   // Unified state
   const farms = isUsingGuestMode ? guestFarms : apiFarms;
@@ -53,9 +54,9 @@ export const useFarms = () => {
   const loading = isUsingGuestMode ? guestLoading : apiLoading;
   const error = isUsingGuestMode ? guestError : apiError;
 
-  // Auto-fetch farms when user context is set (after refresh/login)
+  // Simple effect to fetch farms when user changes
   useEffect(() => {
-    if (user && user.id) {
+    if (user?.id) {
       if (isUsingGuestMode) {
         fetchGuestFarms();
       } else {
@@ -75,11 +76,17 @@ export const useFarms = () => {
 
   const addFarm = useCallback(
     async (farmData: FarmFormData, coordinates: number[][], area: number) => {
+      console.log('🌍 useFarms: addFarm called', { isUsingGuestMode, farmData });
+      
       if (isUsingGuestMode) {
+        console.log('👻 useFarms: Calling guest farm creation');
         addGuestFarm(farmData, coordinates, area);
       } else {
+        console.log('🔐 useFarms: Calling API farm creation');
         await apiAddFarm(farmData, coordinates, area);
       }
+      
+      console.log('✅ useFarms: addFarm completed');
     },
     [isUsingGuestMode, addGuestFarm, apiAddFarm]
   );

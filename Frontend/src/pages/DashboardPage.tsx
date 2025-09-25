@@ -3,18 +3,20 @@ import { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarms } from '../hooks/useFarms';
 import { LogOut, Plus, MapPin, Sprout, User, Crown, TrendingUp, Activity, BarChart3 } from 'lucide-react';
+import {AddFarmCard, Card} from '@/components/card'; 
 import { formatHectares } from '@/utils';
 
 export default function UserDashboard() {
   const { user, logout, isGuestMode, migrationStatus } = useAuth();
   const { farms, loading, error, fetchFarms, clearError } = useFarms();
 
-  // Fetch farms when user context is set (after refresh/login)
+  // Simple effect: fetch farms when component mounts and user is available
   useEffect(() => {
-    if (user && user.id) {
+    console.log('user', user);
+    if (user?.id) {
       fetchFarms();
     }
-  }, [user?.id]);
+  }, [user?.id, fetchFarms]);
 
   // Clear any errors when component unmounts
   useEffect(() => {
@@ -30,7 +32,10 @@ export default function UserDashboard() {
     logout();
   };
 
-  const totalArea = userFarms.reduce((sum: number, farm: any) => sum + farm.area, 0);
+  const totalArea = userFarms.reduce((sum: number, farm: any) => {
+    const area = farm.area || 0; // Handle undefined/null area
+    return sum + area;
+  }, 0);
   const activeCrops = new Set(userFarms.map((farm: any) => farm.crop)).size;
 
 
@@ -168,14 +173,14 @@ export default function UserDashboard() {
                     <h2 className="text-2xl font-bold mb-2">Welcome to AgriPlatform!</h2>
                     <p className="text-blue-100 mb-4 max-w-2xl">
                       You're in Guest Mode - try out all features without signing up! 
-                      Your data is saved locally in your browser. When ready, sign up to sync your farms to the cloud.
+                      Your data is saved locally in your browser. When ready, sign up to sync your farms to the cloud and unlock notifications.
                     </p>
                     <div className="flex space-x-4">
                       <Link
                         to="/create-farm"
                         className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-md font-medium hover:bg-blue-50 transition-colors"
                       >
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="h-4 w-4 mr-2 " />
                         Create Your First Farm
                       </Link>
                       <Link
@@ -342,76 +347,9 @@ export default function UserDashboard() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {userFarms.map((farm: any, index: number) => (
-                      <div key={farm.id} className={`card group  transition-all duration-300 p-5 border-l-4 border-l-primary-500 slide-in stagger-${Math.min(index + 1, 4)}`}>
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <h4 className="text-lg font-semibold text-neutral-900 mb-1 group-hover:text-primary-600 transition-colors">{farm.name}</h4>
-                            <div className="badge-success">
-                              <Sprout className="h-3 w-3 mr-1" />
-                              {farm.crop}
-                            </div>
-                          </div>
-                          <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                            <MapPin className="h-5 w-5 text-primary-600" />
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3 text-sm">
-                          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                            <span className="text-neutral-600">Area:</span>
-                            <span className="font-semibold text-neutral-900">{formatHectares(farm.area)} hectares</span>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                            <span className="text-neutral-600">Planting:</span>
-                            <span className="font-semibold text-neutral-900">
-                              {new Date(farm.plantingDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                            <span className="text-neutral-600">Harvest:</span>
-                            <span className="font-semibold text-neutral-900">
-                              {new Date(farm.harvestDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        {farm.description && (
-                          <div className="mt-4 p-3 bg-gradient-to-r from-neutral-50 to-neutral-100 rounded-lg">
-                            <p className="text-sm text-neutral-600 line-clamp-2">
-                              {farm.description}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="mt-4 flex justify-between items-center">
-                          <div className="badge-info">
-                            <Activity className="h-3 w-3 mr-1" />
-                            {new Date(farm.createdAt).toLocaleDateString()}
-                          </div>
-                          <Link 
-                            to={`/farm/${farm.id}`}
-                            className="btn-sm btn-primary group"
-                          >
-                            View Details
-                            <MapPin className="ml-1 h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-                          </Link>
-                        </div>
-                      </div>
+                      <Card farm={farm} index={index} />
                     ))}
-
-                    {/* Enhanced Add New Farm Card */}
-                    <Link
-                      to="/create-farm"
-                      className="card group  transition-all duration-300 p-6 border-2 border-dashed border-primary-300 hover:border-primary-500 hover:bg-primary-50 flex flex-col items-center justify-center min-h-[300px]"
-                    >
-                      <div className="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 rounded-2xl flex items-center justify-center mb-4 group-hover:from-primary-200 group-hover:to-primary-300 transition-all group-hover:scale-110">
-                        <Plus className="w-8 h-8 text-primary-600 group-hover:rotate-90 transition-transform duration-300" />
-                      </div>
-                      <h4 className="text-lg font-semibold text-neutral-900 mb-2 group-hover:text-primary-600 transition-colors">Add New Farm</h4>
-                      <p className="text-sm text-neutral-600 text-center max-w-xs">
-                        Expand your agricultural portfolio with another farm
-                      </p>
-                    </Link>
+                    <AddFarmCard />
                   </div>
                 </div>
               </div>

@@ -1,7 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useFarmStore } from '../stores/farmStore';
 import { useFarms } from '../hooks/useFarms';
 import { FarmMapView } from '../components/map/FarmMapView';
 import { ArrowLeft, MapPin, Calendar, Sprout, Edit, Trash2, Download, FileText, Map, Lock } from 'lucide-react';

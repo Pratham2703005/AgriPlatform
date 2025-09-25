@@ -234,7 +234,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     };
 
     return (
-        <div className={`relative ${className}`}>
+        <div className={`relative ${className}`} style={{zIndex: 1}}>
             <div
                 ref={mapContainer}
                 style={{ height }}

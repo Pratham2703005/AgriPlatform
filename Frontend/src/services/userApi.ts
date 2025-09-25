@@ -1,5 +1,5 @@
 import { get, withAuth } from '../utils/api';
-import type { ApiResponse } from '../types/api';
+import type { ApiResponse } from '../types/common';
 
 export interface User {
   _id: string;
@@ -18,7 +18,17 @@ export interface UserStats {
   totalAdmins: number;
 }
 
-export interface UsersResponse extends ApiResponse {
+export interface UsersResponse extends ApiResponse<{
+  code: number;
+  users: User[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}> {
+  code: number;
   result: {
     users: User[];
     pagination: {
@@ -30,8 +40,9 @@ export interface UsersResponse extends ApiResponse {
   };
 }
 
-export interface UserStatsResponse extends ApiResponse {
+export interface UserStatsResponse extends ApiResponse<UserStats> {
   result: UserStats;
+  code:number;
 }
 
 /**

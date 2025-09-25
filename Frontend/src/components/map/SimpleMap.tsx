@@ -93,7 +93,7 @@ export const SimpleMap: React.FC<SimpleMapProps> = ({
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} style={{ zIndex: 1 }}>
       {/* Map Container */}
       <div 
         style={{ height }} 

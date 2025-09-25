@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, UserPlus, Shield, Activity, Sprout } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Shield, Activity } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function RegisterPage() {

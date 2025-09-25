@@ -1,12 +1,12 @@
-import { useEffect } from 'react';
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFarms } from '../hooks/useFarms';
 import { useFarmStore } from '../stores/farmStore';
 import { useUserStore } from '../stores/userStore';
-import { LogOut, Users, MapPin, Sprout, BarChart3, Settings, Plus, Mail, Phone, Home, Crown, TrendingUp, Activity, Zap } from 'lucide-react';
+import { LogOut, Users, MapPin, Sprout, BarChart3, Settings, Plus, Mail, Phone, Home, Crown, Activity } from 'lucide-react';
 import { formatHectares } from '@/utils';
+import {AddFarmCard, Card} from '@/components/card';
 
 export default function AdminDashboard() {
     const [allFarmsPage, setAllFarmsPage] = useState(1);
@@ -16,29 +16,17 @@ export default function AdminDashboard() {
     const allFarmsLimit = 10;
     const usersLimit = 10;
     const { user, logout, isAuthenticated } = useAuth();
-    
-    // Use the unified farms hook for "My Farms"
     const { farms, loading: farmsLoading, error: farmsError, fetchFarms, clearError: clearFarmsError } = useFarms();
-    
-    // Use farm store directly for system-wide admin functions (all farms)
     const { allFarms, fetchAllFarms, clearError: clearAllFarmsError } = useFarmStore();
-    
+
     const { users, userStats, loading: usersLoading, error: usersError, fetchUsers, fetchUserStats, clearError: clearUsersError } = useUserStore();
-
-    // Use allFarms for system-wide stats, farms for My Farms
     const totalFarms = allFarms.length;
-    const totalArea:number = allFarms.reduce((sum, farm) => sum + farm.area, 0);
+    const totalArea: number = allFarms.reduce((sum, farm) => {
+        const area = farm.area || 0;
+        return sum + area;
+    }, 0);
     const activeCrops = new Set(allFarms.map(farm => farm.crop)).size;
-    
-    // For admin dashboard, farms from useFarms hook are already the user's own farms
     const myFarms = farms;
-
-    // Debug logs
-    console.log('AdminDashboard user:', user);
-    console.log('AdminDashboard farms:', farms);
-    console.log('AdminDashboard myFarms:', myFarms);
-
-    // Fetch farms and users when component mounts and when user authentication is confirmed
     useEffect(() => {
         if (user && user.id && isAuthenticated) {
             fetchFarms(); // For My Farms - uses unified hook
@@ -46,7 +34,20 @@ export default function AdminDashboard() {
             fetchUserStats(); // Get user statistics
             fetchUsers(usersPage, usersLimit); // Get users, paginated
         }
-    }, [user?.id, isAuthenticated, allFarmsPage, usersPage]);
+    }, [user?.id, isAuthenticated]);
+
+    // Separate effect for pagination changes to avoid infinite loops
+    useEffect(() => {
+        if (user && user.id && isAuthenticated) {
+            fetchAllFarms(allFarmsPage, allFarmsLimit);
+        }
+    }, [allFarmsPage]);
+
+    useEffect(() => {
+        if (user && user.id && isAuthenticated) {
+            fetchUsers(usersPage, usersLimit);
+        }
+    }, [usersPage]);
 
     // Scroll All System Farms section into view when page changes
     const lastPageRef = useRef(allFarmsPage);
@@ -185,10 +186,7 @@ export default function AdminDashboard() {
                                     <p className="text-3xl font-bold text-neutral-900">
                                         {userStats ? userStats.totalUsers.toLocaleString() : '...'}
                                     </p>
-                                    <div className="flex items-center mt-2">
-                                        <TrendingUp className="h-3 w-3 text-primary-600 mr-1" />
-                                        <span className="text-xs text-primary-600 font-medium">+12% this month</span>
-                                    </div>
+                                   
                                 </div>
                                 <div className="flex-shrink-0">
                                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center group-hover:shadow-glow transition-all">
@@ -203,10 +201,7 @@ export default function AdminDashboard() {
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-neutral-600 mb-1">Admin Farms</p>
                                     <p className="text-3xl font-bold text-neutral-900">{totalFarms.toLocaleString()}</p>
-                                    <div className="flex items-center mt-2">
-                                        <TrendingUp className="h-3 w-3 text-primary-600 mr-1" />
-                                        <span className="text-xs text-primary-600 font-medium">+8% this month</span>
-                                    </div>
+                                    
                                 </div>
                                 <div className="flex-shrink-0">
                                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center group-hover:shadow-glow transition-all">
@@ -221,10 +216,7 @@ export default function AdminDashboard() {
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-neutral-600 mb-1">Total Area</p>
                                     <p className="text-3xl font-bold text-neutral-900">{formatHectares(totalArea)}<span className="text-lg text-neutral-600 ml-1">ha</span></p>
-                                    <div className="flex items-center mt-2">
-                                        <TrendingUp className="h-3 w-3 text-accent-600 mr-1" />
-                                        <span className="text-xs text-accent-600 font-medium">+15% this month</span>
-                                    </div>
+                                    
                                 </div>
                                 <div className="flex-shrink-0">
                                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-accent-500 to-accent-700 flex items-center justify-center group-hover:shadow-glow-accent transition-all">
@@ -239,10 +231,7 @@ export default function AdminDashboard() {
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-neutral-600 mb-1">Crop Types</p>
                                     <p className="text-3xl font-bold text-neutral-900">{activeCrops}</p>
-                                    <div className="flex items-center mt-2">
-                                        <Zap className="h-3 w-3 text-secondary-700 mr-1" />
-                                        <span className="text-xs text-secondary-700 font-medium">5 new varieties</span>
-                                    </div>
+                                    
                                 </div>
                                 <div className="flex-shrink-0">
                                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-secondary-500 to-secondary-700 flex items-center justify-center group-hover:shadow-glow transition-all">
@@ -276,82 +265,9 @@ export default function AdminDashboard() {
                                 {myFarms.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {myFarms.map((farm, index) => (
-                                            <div key={farm.id} className={`card group  transition-all duration-300 p-5 border-l-4 border-l-primary-500 slide-in stagger-${Math.min(index + 1, 4)}`}>
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div>
-                                                        <h4 className="text-lg font-semibold text-neutral-900 mb-1 group-hover:text-primary-600 transition-colors">{farm.name}</h4>
-                                                        <div className="flex items-center space-x-2">
-                                                            <div className="badge-success">
-                                                                <Sprout className="h-3 w-3 mr-1" />
-                                                                {farm.crop}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-col items-end space-y-2">
-                                                        <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                                                            <MapPin className="h-5 w-5 text-primary-600" />
-                                                        </div>
-                                                        <div className="badge-accent">
-                                                            <Crown className="h-3 w-3 mr-1" />
-                                                            Admin
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="space-y-3">
-                                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                                        <div className="bg-neutral-50 rounded-lg p-3">
-                                                            <p className="text-neutral-500 text-xs mb-1">Area</p>
-                                                            <p className="font-semibold text-neutral-900">{formatHectares(farm.area)} ha</p>
-                                                        </div>
-                                                        <div className="bg-neutral-50 rounded-lg p-3">
-                                                            <p className="text-neutral-500 text-xs mb-1">Status</p>
-                                                            <p className="font-semibold text-primary-600">Active</p>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="space-y-2 text-sm text-neutral-600">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="flex items-center">
-                                                                <div className="h-2 w-2 bg-primary-500 rounded-full mr-2"></div>
-                                                                Planted
-                                                            </span>
-                                                            <span className="font-medium text-neutral-900">
-                                                                {new Date(farm.plantingDate).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="flex items-center">
-                                                                <div className="h-2 w-2 bg-secondary-500 rounded-full mr-2"></div>
-                                                                Harvest
-                                                            </span>
-                                                            <span className="font-medium text-neutral-900">
-                                                                {new Date(farm.harvestDate).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {farm.description && (
-                                                    <div className="mt-4 pt-4 border-t border-neutral-100">
-                                                        <p className="text-sm text-neutral-600 line-clamp-2">
-                                                            {farm.description}
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                <div className="mt-4 pt-4 border-t border-neutral-100 flex justify-between items-center">
-                                                    <span className="text-xs text-neutral-400">Created {new Date(farm.createdAt).toLocaleDateString()}</span>
-                                                    <Link 
-                                                        to={`/farm/${farm.id}`}
-                                                        className="btn-sm btn-primary group"
-                                                    >
-                                                        View Details
-                                                        <MapPin className="ml-1 h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-                                                    </Link>
-                                                </div>
-                                            </div>
+                                            <Card farm={farm} index={index} />
                                         ))}
+                                        <AddFarmCard/>
                                     </div>
                                 ) : (
                                     <div className="text-center py-12 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-2xl border border-dashed border-neutral-200">
@@ -366,8 +282,8 @@ export default function AdminDashboard() {
                                             to="/create-farm"
                                             className="btn-primary group"
                                         >
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                Create Farm
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Create Farm
                                         </Link>
                                     </div>
                                 )}
@@ -386,14 +302,14 @@ export default function AdminDashboard() {
                                         <span className="text-sm text-gray-500">
                                             {userStats && (
                                                 <>
-                                                    <span className="font-medium text-blue-600">{userStats.totalFarmers}</span> Farmers, 
+                                                    <span className="font-medium text-blue-600">{userStats.totalFarmers}</span> Farmers,
                                                     <span className="font-medium text-green-600">{userStats.totalAdmins}</span> Admins
                                                 </>
                                             )}
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 {usersLoading ? (
                                     <div className="text-center py-8">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -461,7 +377,7 @@ export default function AdminDashboard() {
                                                 </tbody>
                                             </table>
                                         </div>
-                                        
+
                                         {/* Pagination Controls */}
                                         <div className="flex justify-center mt-4">
                                             <button
@@ -494,7 +410,7 @@ export default function AdminDashboard() {
                         </div>
                     </div>
 
-                    
+
 
                     {/* All System Farms */}
                     <div className="mt-8" ref={allFarmsSectionRef}>
@@ -509,55 +425,7 @@ export default function AdminDashboard() {
                                     <>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {allFarms.map((farm) => (
-                                                <div key={farm.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <h4 className="text-md font-medium text-gray-900">{farm.name}</h4>
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                            {farm.crop}
-                                                        </span>
-                                                    </div>
-                                                    <div className="space-y-2 text-sm text-gray-600">
-                                                        <div className="flex justify-between">
-                                                            <span>Owner:</span>
-                                                            <span className="font-medium text-blue-600">
-                                                                {(
-                                                                    farm.userId === user?.id ||
-                                                                    (farm.userId && typeof farm.userId === 'object' && '_id' in farm.userId && (farm.userId as any)._id === user?.id)
-                                                                ) ? 'Admin' : 'User'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Area:</span>
-                                                            <span className="font-medium">{formatHectares(farm.area)} hectares</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Planting:</span>
-                                                            <span className="font-medium">
-                                                                {new Date(farm.plantingDate).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Harvest:</span>
-                                                            <span className="font-medium">
-                                                                {new Date(farm.harvestDate).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    {farm.description && (
-                                                        <p className="mt-2 text-xs text-gray-500 line-clamp-2">
-                                                            {farm.description}
-                                                        </p>
-                                                    )}
-                                                    <div className="mt-3 flex justify-between items-center text-xs">
-                                                        <span className="text-gray-400">Created {new Date(farm.createdAt).toLocaleDateString()}</span>
-                                                        <Link 
-                                                            to={`/farm/${farm.id}`}
-                                                            className="text-green-600 hover:text-green-700 font-medium"
-                                                        >
-                                                            View Details →
-                                                        </Link>
-                                                    </div>
-                                                </div>
+                                                <Card farm={farm} index={parseInt(farm.id)} />
                                             ))}
                                         </div>
                                         {/* Pagination Controls */}

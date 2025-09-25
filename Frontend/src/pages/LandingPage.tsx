@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sprout, BarChart3, Map, Bell, ArrowRight, Check, Zap, Shield, TrendingUp, Users, Leaf, Award } from 'lucide-react';
+import { Sprout, BarChart3, Map, Bell, ArrowRight, Check, Zap, Shield, TrendingUp, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export function LandingPage() {

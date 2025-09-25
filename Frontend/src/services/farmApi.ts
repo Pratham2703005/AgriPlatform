@@ -13,7 +13,18 @@ export interface CreateFarmRequest {
   area: number;
 }
 
-export interface UpdateFarmRequest extends Partial<CreateFarmRequest> {}
+export interface UpdateFarmRequest {
+  name?: string;
+  crop?: string;
+  plantingDate?: string;
+  harvestDate?: string;
+  description?: string;
+  coordinates?: number[][] | {
+    type: 'Polygon';
+    coordinates: number[][][];
+  };
+  area?: number;
+}
 
 export interface FarmResponse {
   code: number;
@@ -143,15 +154,15 @@ export class FarmAPI {
       };
 
       // Format coordinates properly for the backend if they exist
-      let formattedData = { ...farmData };
+      let formattedData: any = { ...farmData };
 
-      if (formattedData.coordinates && formattedData.coordinates.length > 0) {
+      if (formattedData.coordinates && Array.isArray(formattedData.coordinates) && formattedData.coordinates.length > 0) {
         // Ensure the polygon is closed (first point equals last point)
         const coords = [...formattedData.coordinates];
 
         // Check if the polygon is not already closed
-        const firstPoint = coords[0];
-        const lastPoint = coords[coords.length - 1];
+        const firstPoint = coords[0] || [0, 0];
+        const lastPoint = coords[coords.length - 1] || [0, 0];
 
         if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
           // Add the first point again to close the loop
@@ -226,7 +237,7 @@ export class FarmAPI {
       coordinates: Array.isArray(apiData.coordinates?.coordinates)
         ? apiData.coordinates.coordinates[0]
         : [],
-      area: apiData.area,
+      area: typeof apiData.area === 'number' ? apiData.area : 0, // Ensure area is always a number
       createdAt: apiData.createdAt,
       updatedAt: apiData.updatedAt,
       userId: userId,
