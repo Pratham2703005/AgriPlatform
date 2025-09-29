@@ -1,2 +1,2 @@
 // Re-export all hooks
-export { useAuth } from '../contexts/AuthContext';
+export { useAuth } from './useAuth';

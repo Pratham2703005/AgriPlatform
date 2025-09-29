@@ -1,4 +1,4 @@
-import { BaseEntity } from './common';
+import type { BaseEntity } from './common';
 
 export interface User extends BaseEntity {
   fullName: string;

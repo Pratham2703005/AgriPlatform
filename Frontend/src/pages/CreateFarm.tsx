@@ -24,7 +24,11 @@ export const CreateFarm: React.FC = () => {
     formState: { errors },
     watch,
     setValue
-  } = useForm<FarmFormData>();
+  } = useForm<FarmFormData>({
+    defaultValues: {
+      description: '',
+    },
+  });
 
   const plantingDate = watch('plantingDate');
   const selectedCrop = watch('crop');

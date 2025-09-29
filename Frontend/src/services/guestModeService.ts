@@ -1,6 +1,6 @@
 import { FarmAPI } from './farmApi';
 import { GuestFarmStorage } from '../utils/guestFarmStorage';
-import type { User } from './authApi';
+import type { User } from '../types/user';
 
 /**
  * Service for managing guest mode functionality
@@ -17,6 +17,8 @@ export class GuestModeService {
       phone: '',
       address: '',
       role: 'user',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   }
 
