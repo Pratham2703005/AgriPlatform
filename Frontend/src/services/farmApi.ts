@@ -1,6 +1,7 @@
 import { get, post, put, del } from '../utils/api';
 import { AuthAPI } from './authApi';
 import type { Farm } from '../types/farm';
+import type { ApiFarmData } from '../types/api';
 
 // API Request/Response Types
 export interface CreateFarmRequest {
@@ -19,10 +20,12 @@ export interface UpdateFarmRequest {
   plantingDate?: string;
   harvestDate?: string;
   description?: string;
-  coordinates?: number[][] | {
-    type: 'Polygon';
-    coordinates: number[][][];
-  };
+  coordinates?:
+    | number[][]
+    | {
+        type: 'Polygon';
+        coordinates: number[][][];
+      };
   area?: number;
 }
 
@@ -154,9 +157,13 @@ export class FarmAPI {
       };
 
       // Format coordinates properly for the backend if they exist
-      let formattedData: any = { ...farmData };
+      let formattedData: UpdateFarmRequest = { ...farmData };
 
-      if (formattedData.coordinates && Array.isArray(formattedData.coordinates) && formattedData.coordinates.length > 0) {
+      if (
+        formattedData.coordinates &&
+        Array.isArray(formattedData.coordinates) &&
+        formattedData.coordinates.length > 0
+      ) {
         // Ensure the polygon is closed (first point equals last point)
         const coords = [...formattedData.coordinates];
 
@@ -207,12 +214,14 @@ export class FarmAPI {
   /**
    * Transform frontend farm data to API format
    */
-  static transformToApiFormat(farmData: any): CreateFarmRequest {
+  static transformToApiFormat(
+    farmData: Partial<Farm> & { coordinates: number[][]; area: number }
+  ): CreateFarmRequest {
     return {
-      name: farmData.name,
-      crop: farmData.crop,
-      plantingDate: farmData.plantingDate,
-      harvestDate: farmData.harvestDate,
+      name: farmData.name || '',
+      crop: farmData.crop || '',
+      plantingDate: farmData.plantingDate || '',
+      harvestDate: farmData.harvestDate || '',
       description: farmData.description,
       coordinates: farmData.coordinates,
       area: farmData.area,
@@ -222,7 +231,7 @@ export class FarmAPI {
   /**
    * Transform API response to frontend format
    */
-  static transformFromApiFormat(apiData: any): Farm {
+  static transformFromApiFormat(apiData: ApiFarmData): Farm {
     let userId = apiData.userId;
     if (userId && typeof userId === 'object' && '_id' in userId) {
       userId = userId._id;
@@ -234,13 +243,18 @@ export class FarmAPI {
       plantingDate: apiData.plantingDate,
       harvestDate: apiData.harvestDate,
       description: apiData.description,
-      coordinates: Array.isArray(apiData.coordinates?.coordinates)
-        ? apiData.coordinates.coordinates[0]
-        : [],
+      coordinates:
+        typeof apiData.coordinates === 'object' &&
+        'coordinates' in apiData.coordinates &&
+        Array.isArray(apiData.coordinates.coordinates)
+          ? apiData.coordinates.coordinates[0] || []
+          : Array.isArray(apiData.coordinates)
+            ? apiData.coordinates
+            : [],
       area: typeof apiData.area === 'number' ? apiData.area : 0, // Ensure area is always a number
       createdAt: apiData.createdAt,
       updatedAt: apiData.updatedAt,
-      userId: userId,
+      userId: typeof userId === 'string' ? userId : '',
     };
   }
 }

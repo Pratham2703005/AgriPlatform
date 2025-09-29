@@ -16,7 +16,7 @@ export class GuestModeService {
       email: 'guest@agriplatform.com',
       phone: '',
       address: '',
-      role: 'user'
+      role: 'user',
     };
   }
 
@@ -26,7 +26,7 @@ export class GuestModeService {
   static isGuestMode(): boolean {
     const token = localStorage.getItem('auth_token');
     const user = localStorage.getItem('auth_user');
-    
+
     // If no auth token but guest token exists, we're in guest mode
     const guestToken = localStorage.getItem('guest_mode');
     return !token && !user && guestToken === 'true';
@@ -66,7 +66,11 @@ export class GuestModeService {
   /**
    * Migrate all guest farms to user account after signup/signin
    */
-  static async migrateGuestFarmsToUser(): Promise<{ success: boolean; migratedCount: number; errors: string[] }> {
+  static async migrateGuestFarmsToUser(): Promise<{
+    success: boolean;
+    migratedCount: number;
+    errors: string[];
+  }> {
     const guestFarms = GuestFarmStorage.getAllForMigration();
     const errors: string[] = [];
     let migratedCount = 0;
@@ -82,7 +86,7 @@ export class GuestModeService {
       try {
         const createRequest = FarmAPI.transformToApiFormat(farmData);
         const response = await FarmAPI.createFarm(createRequest);
-        
+
         if (response.code === 1) {
           migratedCount++;
           console.log(`✅ Migrated farm: ${farmData.name}`);
@@ -91,8 +95,10 @@ export class GuestModeService {
           console.error(`❌ ${errorMsg}`);
           errors.push(errorMsg);
         }
-      } catch (error: any) {
-        const errorMsg = `Failed to migrate farm "${farmData.name}": ${error.message || 'Unknown error'}`;
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        const errorMsg = `Failed to migrate farm "${farmData.name}": ${errorMessage}`;
         console.error(`❌ ${errorMsg}`);
         errors.push(errorMsg);
       }
@@ -102,13 +108,15 @@ export class GuestModeService {
     }
 
     const success = migratedCount > 0;
-    
+
     if (success) {
       // Clear guest farms after successful migration
       GuestFarmStorage.clearAllFarms();
       // Disable guest mode
       this.disableGuestMode();
-      console.log(`✅ Migration completed: ${migratedCount}/${guestFarms.length} farms migrated`);
+      console.log(
+        `✅ Migration completed: ${migratedCount}/${guestFarms.length} farms migrated`
+      );
     }
 
     return { success, migratedCount, errors };
@@ -121,7 +129,7 @@ export class GuestModeService {
     const hasAuthToken = !!localStorage.getItem('auth_token');
     const hasAuthUser = !!localStorage.getItem('auth_user');
     const hasGuestMode = !!localStorage.getItem('guest_mode');
-    
+
     // Enable guest mode if no authentication and not already in guest mode
     return !hasAuthToken && !hasAuthUser && !hasGuestMode;
   }

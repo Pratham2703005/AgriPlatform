@@ -1,44 +1,11 @@
 import { post, get, withAuth } from '../utils/api';
-import type { RequestConfig } from '../types/api';
-
-// API Request/Response Types
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  fullName: string;
-  email: string;
-  password: string;
-  phone: string;
-  address: string;
-}
-
-export interface AuthResponse {
-  code: number;
-  message: string;
-  result: {
-    token: string;
-    user: {
-      id: string;
-      fullName: string;
-      email: string;
-      phone: string;
-      address: string;
-      role: string;
-    };
-  };
-}
-
-export interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  address: string;
-  role: string;
-}
+import type {
+  RequestConfig,
+  User,
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+} from '@/types';
 
 /**
  * Authentication API Service
@@ -50,13 +17,13 @@ export class AuthAPI {
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
       const response = await post<AuthResponse>('/user/login', credentials);
-      
+
       // Store token in localStorage for subsequent requests
       if (response.result?.token) {
         localStorage.setItem('auth_token', response.result.token);
         localStorage.setItem('auth_user', JSON.stringify(response.result.user));
       }
-      
+
       return response;
     } catch (error) {
       console.error('Login error:', error);
@@ -70,13 +37,13 @@ export class AuthAPI {
   static async register(userData: RegisterRequest): Promise<AuthResponse> {
     try {
       const response = await post<AuthResponse>('/user/register', userData);
-      
+
       // Store token in localStorage for subsequent requests
       if (response.result?.token) {
         localStorage.setItem('auth_token', response.result.token);
         localStorage.setItem('auth_user', JSON.stringify(response.result.user));
       }
-      
+
       return response;
     } catch (error) {
       console.error('Registration error:', error);
@@ -90,7 +57,7 @@ export class AuthAPI {
   static async logout(): Promise<void> {
     try {
       const token = localStorage.getItem('auth_token');
-      
+
       if (token) {
         // Call backend logout endpoint
         await get('/user/logout', withAuth(token));

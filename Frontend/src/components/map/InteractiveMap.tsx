@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -25,6 +25,21 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentPolygon, setCurrentPolygon] = useState<number[][]>([]);
     const [polygonSource, setPolygonSource] = useState<mapboxgl.GeoJSONSource | null>(null);
+
+    const updatePolygonDisplay = useCallback((coordinates: number[][]) => {
+        if (!polygonSource) return;
+
+        const geojson = {
+            type: 'Feature' as const,
+            properties: {},
+            geometry: {
+                type: 'Polygon' as const,
+                coordinates: coordinates.length > 2 ? [coordinates] : [[]]
+            }
+        };
+
+        polygonSource.setData(geojson);
+    }, [polygonSource]);
 
     useEffect(() => {
         if (!mapContainer.current) return;
@@ -62,7 +77,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         map.current.addControl({
             onAdd: () => drawingControls,
             onRemove: () => { }
-        } as any, 'top-left');
+        } as mapboxgl.IControl, 'top-left');
 
         // Wait for map to load
         map.current.on('load', () => {
@@ -189,22 +204,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 map.current.remove();
             }
         };
-    }, []);
-
-    const updatePolygonDisplay = (coordinates: number[][]) => {
-        if (!polygonSource) return;
-
-        const geojson = {
-            type: 'Feature' as const,
-            properties: {},
-            geometry: {
-                type: 'Polygon' as const,
-                coordinates: coordinates.length > 2 ? [coordinates] : [[]]
-            }
-        };
-
-        polygonSource.setData(geojson);
-    };
+    }, [currentPolygon, initialCoordinates, isDrawing, onPolygonComplete, updatePolygonDisplay]);
 
     const calculatePolygonArea = (coordinates: number[][]): number => {
         if (coordinates.length < 3) return 0;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sprout, BarChart3, Map, Bell, ArrowRight, Check, Zap, Shield, TrendingUp, Award } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 export function LandingPage() {
   const navigate = useNavigate();

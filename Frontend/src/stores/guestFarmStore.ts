@@ -9,10 +9,15 @@ interface GuestFarmStore extends FarmState {
     coordinates: number[][],
     area: number
   ) => void;
-  updateGuestFarm: (id: string, farmData: Partial<FarmFormData & { coordinates?: number[][]; area?: number }>) => void;
+  updateGuestFarm: (
+    id: string,
+    farmData: Partial<
+      FarmFormData & { coordinates?: number[][]; area?: number }
+    >
+  ) => void;
   deleteGuestFarm: (id: string) => void;
   fetchGuestFarms: () => void;
-  
+
   // Local state management
   getFarmById: (id: string) => Farm | undefined;
   setCurrentFarm: (farm: Farm | null) => void;
@@ -47,7 +52,7 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
       set({ loading: true, error: null });
       const guestFarms = GuestFarmStorage.getFarms();
       const farms = guestFarms.map(convertGuestFarmToFarm);
-      
+
       set({
         farms,
         allFarms: farms, // Same as farms for guest mode
@@ -59,12 +64,15 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
           totalPages: Math.ceil(farms.length / 10) || 1,
         },
       });
-      
+
       console.log(`📱 Loaded ${farms.length} guest farms from localStorage`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching guest farms:', error);
       set({
-        error: error.message || 'Failed to fetch guest farms',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch guest farms',
         loading: false,
       });
     }
@@ -73,7 +81,7 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
   // FarmState required methods (adapted for guest mode)
   fetchFarms: async () => {
     // For guest mode, this is the same as fetchGuestFarms but async
-    return new Promise<void>((resolve) => {
+    return new Promise<void>(resolve => {
       get().fetchGuestFarms();
       resolve();
     });
@@ -130,17 +138,23 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
     area: number
   ) => {
     try {
-      console.log('👻 guestFarmStore: Starting guest farm creation', { farmData, area });
+      console.log('👻 guestFarmStore: Starting guest farm creation', {
+        farmData,
+        area,
+      });
       set({ loading: true, error: null });
-      
+
       const guestFarm = GuestFarmStorage.addFarm(farmData, coordinates, area);
       const newFarm = convertGuestFarmToFarm(guestFarm);
-      
+
       console.log('📝 guestFarmStore: Adding guest farm to state', newFarm);
-      
+
       set(state => {
         const updatedFarms = [...state.farms, newFarm];
-        console.log('✅ guestFarmStore: Guest farm added, total farms:', updatedFarms.length);
+        console.log(
+          '✅ guestFarmStore: Guest farm added, total farms:',
+          updatedFarms.length
+        );
         return {
           farms: updatedFarms,
           allFarms: updatedFarms,
@@ -152,26 +166,31 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
           },
         };
       });
-      
+
       console.log('✅ guestFarmStore: Added guest farm:', newFarm.name);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ guestFarmStore: Error adding guest farm:', error);
       set({
-        error: error.message || 'Failed to create farm',
+        error: error instanceof Error ? error.message : 'Failed to create farm',
         loading: false,
       });
     }
   },
 
-  updateGuestFarm: (id: string, farmData: Partial<FarmFormData & { coordinates?: number[][]; area?: number }>) => {
+  updateGuestFarm: (
+    id: string,
+    farmData: Partial<
+      FarmFormData & { coordinates?: number[][]; area?: number }
+    >
+  ) => {
     try {
       set({ loading: true, error: null });
-      
+
       const updatedGuestFarm = GuestFarmStorage.updateFarm(id, farmData);
-      
+
       if (updatedGuestFarm) {
         const updatedFarm = convertGuestFarmToFarm(updatedGuestFarm);
-        
+
         set(state => {
           const updatedFarms = state.farms.map(farm =>
             farm.id === id ? updatedFarm : farm
@@ -179,11 +198,12 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
           return {
             farms: updatedFarms,
             allFarms: updatedFarms,
-            currentFarm: state.currentFarm?.id === id ? updatedFarm : state.currentFarm,
+            currentFarm:
+              state.currentFarm?.id === id ? updatedFarm : state.currentFarm,
             loading: false,
           };
         });
-        
+
         console.log('✅ Updated guest farm:', updatedFarm.name);
       } else {
         set({
@@ -191,10 +211,10 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
           loading: false,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating guest farm:', error);
       set({
-        error: error.message || 'Failed to update farm',
+        error: error instanceof Error ? error.message : 'Failed to update farm',
         loading: false,
       });
     }
@@ -203,25 +223,28 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
   deleteGuestFarm: (id: string) => {
     try {
       set({ loading: true, error: null });
-      
+
       const success = GuestFarmStorage.deleteFarm(id);
-      
+
       if (success) {
         set(state => {
           const updatedFarms = state.farms.filter(farm => farm.id !== id);
           return {
             farms: updatedFarms,
             allFarms: updatedFarms,
-            currentFarm: state.currentFarm?.id === id ? null : state.currentFarm,
+            currentFarm:
+              state.currentFarm?.id === id ? null : state.currentFarm,
             loading: false,
             pagination: {
               ...state.pagination,
               total: updatedFarms.length,
-              totalPages: Math.ceil(updatedFarms.length / state.pagination.limit),
+              totalPages: Math.ceil(
+                updatedFarms.length / state.pagination.limit
+              ),
             },
           };
         });
-        
+
         console.log('✅ Deleted guest farm:', id);
       } else {
         set({
@@ -229,10 +252,10 @@ export const useGuestFarmStore = create<GuestFarmStore>((set, get) => ({
           loading: false,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting guest farm:', error);
       set({
-        error: error.message || 'Failed to delete farm',
+        error: error instanceof Error ? error.message : 'Failed to delete farm',
         loading: false,
       });
     }

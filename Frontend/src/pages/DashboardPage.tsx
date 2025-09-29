@@ -1,29 +1,32 @@
 import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useCallback } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import { LogOut, Plus, MapPin, Sprout, User, Crown, TrendingUp, Activity, BarChart3 } from 'lucide-react';
 import {AddFarmCard, Card} from '@/components/card'; 
 import { formatHectares } from '@/utils';
+import type { Farm } from '@/types/farm';
 
 export default function UserDashboard() {
   const { user, logout, isGuestMode, migrationStatus } = useAuth();
   const { farms, loading, error, fetchFarms, clearError } = useFarms();
+  const memoFetchFarms = useCallback(() => fetchFarms(), [fetchFarms]);
+  const memoClearError = useCallback(() => clearError(), [clearError]);
 
   // Simple effect: fetch farms when component mounts and user is available
   useEffect(() => {
     console.log('user', user);
     if (user?.id) {
-      fetchFarms();
+      memoFetchFarms();
     }
-  }, [user?.id, fetchFarms]);
+  }, [user, memoFetchFarms]);
 
   // Clear any errors when component unmounts
   useEffect(() => {
     return () => {
-      clearError();
+      memoClearError();
     };
-  }, []);
+  }, [memoClearError]);
 
   // All farms belong to the current user (backend filters by user)
   const userFarms = farms;
@@ -32,11 +35,11 @@ export default function UserDashboard() {
     logout();
   };
 
-  const totalArea = userFarms.reduce((sum: number, farm: any) => {
-    const area = farm.area || 0; // Handle undefined/null area
+  const totalArea = userFarms.reduce((sum: number, farm: Farm) => {
+    const area = farm.area || 0;
     return sum + area;
   }, 0);
-  const activeCrops = new Set(userFarms.map((farm: any) => farm.crop)).size;
+  const activeCrops = new Set(userFarms.map((farm: Farm) => farm.crop)).size;
 
 
 
@@ -346,7 +349,7 @@ export default function UserDashboard() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userFarms.map((farm: any, index: number) => (
+                    {userFarms.map((farm: Farm, index: number) => (
                       <Card farm={farm} index={index} />
                     ))}
                     <AddFarmCard />

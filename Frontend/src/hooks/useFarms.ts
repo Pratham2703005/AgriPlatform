@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from './useAuth';
 import { useFarmStore } from '../stores/farmStore';
 import { useGuestFarmStore } from '../stores/guestFarmStore';
 import type { Farm, FarmFormData } from '../types/farm';
@@ -45,8 +45,12 @@ export const useFarms = () => {
 
   // Determine which store to use
   const isUsingGuestMode = isGuestMode;
-  
-  console.log('🌍 useFarms: Store selection', { isGuestMode, isUsingGuestMode, userId: user?.id });
+
+  console.log('🌍 useFarms: Store selection', {
+    isGuestMode,
+    isUsingGuestMode,
+    userId: user?.id,
+  });
 
   // Unified state
   const farms = isUsingGuestMode ? guestFarms : apiFarms;
@@ -63,7 +67,7 @@ export const useFarms = () => {
         apiFetchFarms();
       }
     }
-  }, [user?.id, isUsingGuestMode]);
+  }, [user?.id, isUsingGuestMode, fetchGuestFarms, apiFetchFarms]);
 
   // Unified methods
   const fetchFarms = useCallback(async () => {
@@ -76,8 +80,11 @@ export const useFarms = () => {
 
   const addFarm = useCallback(
     async (farmData: FarmFormData, coordinates: number[][], area: number) => {
-      console.log('🌍 useFarms: addFarm called', { isUsingGuestMode, farmData });
-      
+      console.log('🌍 useFarms: addFarm called', {
+        isUsingGuestMode,
+        farmData,
+      });
+
       if (isUsingGuestMode) {
         console.log('👻 useFarms: Calling guest farm creation');
         addGuestFarm(farmData, coordinates, area);
@@ -85,7 +92,7 @@ export const useFarms = () => {
         console.log('🔐 useFarms: Calling API farm creation');
         await apiAddFarm(farmData, coordinates, area);
       }
-      
+
       console.log('✅ useFarms: addFarm completed');
     },
     [isUsingGuestMode, addGuestFarm, apiAddFarm]

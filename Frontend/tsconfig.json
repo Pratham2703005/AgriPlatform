@@ -6,6 +6,6 @@
   ],
   "compilerOptions": {
     "strict": true,
-    "noImplicitAny": false
+    "noImplicitAny": true
   }
 }

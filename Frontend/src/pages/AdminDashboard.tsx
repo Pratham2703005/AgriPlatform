@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import { useFarmStore } from '../stores/farmStore';
 import { useUserStore } from '../stores/userStore';
@@ -20,6 +20,15 @@ export default function AdminDashboard() {
     const { allFarms, fetchAllFarms, clearError: clearAllFarmsError } = useFarmStore();
 
     const { users, userStats, loading: usersLoading, error: usersError, fetchUsers, fetchUserStats, clearError: clearUsersError } = useUserStore();
+
+    // Memoize all callback functions to avoid unnecessary re-renders
+    const memoFetchFarms = useCallback(() => fetchFarms(), [fetchFarms]);
+    const memoFetchAllFarms = useCallback(() => fetchAllFarms(allFarmsPage, allFarmsLimit), [fetchAllFarms, allFarmsPage, allFarmsLimit]);
+    const memoFetchUsers = useCallback(() => fetchUsers(usersPage, usersLimit), [fetchUsers, usersPage, usersLimit]);
+    const memoFetchUserStats = useCallback(() => fetchUserStats(), [fetchUserStats]);
+    const memoClearFarmsError = useCallback(() => clearFarmsError(), [clearFarmsError]);
+    const memoClearAllFarmsError = useCallback(() => clearAllFarmsError(), [clearAllFarmsError]);
+    const memoClearUsersError = useCallback(() => clearUsersError(), [clearUsersError]);
     const totalFarms = allFarms.length;
     const totalArea: number = allFarms.reduce((sum, farm) => {
         const area = farm.area || 0;
@@ -29,25 +38,25 @@ export default function AdminDashboard() {
     const myFarms = farms;
     useEffect(() => {
         if (user && user.id && isAuthenticated) {
-            fetchFarms(); // For My Farms - uses unified hook
-            fetchAllFarms(allFarmsPage, allFarmsLimit); // For All System Farms, paginated
-            fetchUserStats(); // Get user statistics
-            fetchUsers(usersPage, usersLimit); // Get users, paginated
+            memoFetchFarms();
+            memoFetchAllFarms();
+            memoFetchUserStats();
+            memoFetchUsers();
         }
-    }, [user?.id, isAuthenticated]);
+    }, [user, isAuthenticated, memoFetchFarms, memoFetchAllFarms, memoFetchUserStats, memoFetchUsers]);
 
     // Separate effect for pagination changes to avoid infinite loops
     useEffect(() => {
         if (user && user.id && isAuthenticated) {
-            fetchAllFarms(allFarmsPage, allFarmsLimit);
+            memoFetchAllFarms();
         }
-    }, [allFarmsPage]);
+    }, [user, isAuthenticated, memoFetchAllFarms]);
 
     useEffect(() => {
         if (user && user.id && isAuthenticated) {
-            fetchUsers(usersPage, usersLimit);
+            memoFetchUsers();
         }
-    }, [usersPage]);
+    }, [user, isAuthenticated, memoFetchUsers]);
 
     // Scroll All System Farms section into view when page changes
     const lastPageRef = useRef(allFarmsPage);
@@ -67,11 +76,11 @@ export default function AdminDashboard() {
     // Clear any errors when component unmounts
     useEffect(() => {
         return () => {
-            clearFarmsError();
-            clearAllFarmsError();
-            clearUsersError();
+            memoClearFarmsError();
+            memoClearAllFarmsError();
+            memoClearUsersError();
         };
-    }, []); // Remove dependencies to avoid infinite loop
+    }, [memoClearFarmsError, memoClearAllFarmsError, memoClearUsersError]);
 
     const handleLogout = () => {
         logout();

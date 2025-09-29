@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import type { FarmFormData } from '../types/farm';
 import { CROP_OPTIONS } from '../types/farm';
@@ -33,7 +33,7 @@ export default function EditFarm() {
   const plantingDate = watch('plantingDate');
 
   // Check permissions
-  const isGuestFarm = (farm as any)?.isGuest === true;
+  const isGuestFarm = (farm as unknown as { isGuest?: boolean })?.isGuest === true;
   const canEdit = user?.role === 'admin' || 
     (farm?.userId === user?.id) || 
     (isGuestFarm && isGuestMode);

@@ -7,6 +7,44 @@ export interface ApiError {
   statusCode?: number;
 }
 
+export interface BackendApiResponse<T = unknown> {
+  code: number;
+  message: string;
+  result?: T;
+  data?: T;
+}
+
+export interface ApiUserData {
+  _id?: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  role: 'admin' | 'user';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ApiCoordinates {
+  type: string;
+  coordinates: number[][][];
+}
+
+export interface ApiFarmData {
+  _id?: string;
+  id: string;
+  name: string;
+  crop: string;
+  plantingDate: string;
+  harvestDate: string;
+  description?: string;
+  coordinates: ApiCoordinates | number[][];
+  area: number;
+  createdAt: string;
+  updatedAt: string;
+  userId: string | { _id: string };
+}
+
 export interface ValidationError {
   field: string;
   message: string;

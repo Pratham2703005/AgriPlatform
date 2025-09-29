@@ -1,5 +1,5 @@
 
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useEffect } from 'react';
 import { useFarmStore } from '../stores/farmStore';
 import AdminDashboard from './AdminDashboard';

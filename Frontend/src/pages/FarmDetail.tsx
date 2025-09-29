@@ -1,24 +1,26 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import { FarmMapView } from '../components/map/FarmMapView';
 import { ArrowLeft, MapPin, Calendar, Sprout, Edit, Trash2, Download, FileText, Map, Lock } from 'lucide-react';
 import { useEffect } from 'react';
 import { formatHectares } from '@/utils';
+import type { Farm } from '@/types/farm';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isGuestMode } = useAuth();
   const { getFarmById, deleteFarm, loading, farms } = useFarms();
-  const [farm, setFarm] = React.useState<any>(null);
+  const [farm, setFarm] = React.useState<Farm | null>(null);
 
 
   // Set farm when farms are loaded
   useEffect(() => {
     if (!loading && id && farms.length > 0) {
-      setFarm(getFarmById(id));
+  const foundFarm = getFarmById(id);
+  setFarm(foundFarm ?? null);
     }
   }, [loading, id, getFarmById, farms]);
 
@@ -115,7 +117,7 @@ export default function FarmDetail() {
 
   // Check if user has permission to view this farm
   // Allow guest users to view guest farms
-  const isGuestFarm = (farm as any)?.isGuest === true;
+  const isGuestFarm = (farm as unknown as { isGuest?: boolean })?.isGuest === true;
   const canView = user?.role === 'admin' || (farm?.userId === user?.id) || isGuestFarm || isGuestMode;
   // Guest users can only edit/delete guest farms, authenticated users can edit their own farms
   const canEdit = user?.role === 'admin' || 

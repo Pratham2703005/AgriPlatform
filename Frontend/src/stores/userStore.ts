@@ -21,7 +21,7 @@ interface UserStore {
   setPagination: (pagination: Partial<UserStore['pagination']>) => void;
 }
 
-export const useUserStore = create<UserStore>((set) => ({
+export const useUserStore = create<UserStore>(set => ({
   // Initial state
   users: [],
   userStats: null,
@@ -52,10 +52,13 @@ export const useUserStore = create<UserStore>((set) => ({
           loading: false,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching users:', error);
       set({
-        error: error.message || 'Failed to fetch users',
+        error:
+          typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message?: unknown }).message)
+            : 'Failed to fetch users',
         loading: false,
       });
     }
@@ -78,10 +81,13 @@ export const useUserStore = create<UserStore>((set) => ({
           loading: false,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching user statistics:', error);
       set({
-        error: error.message || 'Failed to fetch user statistics',
+        error:
+          typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message?: unknown }).message)
+            : 'Failed to fetch user statistics',
         loading: false,
       });
     }
@@ -93,8 +99,8 @@ export const useUserStore = create<UserStore>((set) => ({
   },
 
   // Set pagination
-  setPagination: (pagination) => {
-    set((state) => ({
+  setPagination: pagination => {
+    set(state => ({
       pagination: { ...state.pagination, ...pagination },
     }));
   },
