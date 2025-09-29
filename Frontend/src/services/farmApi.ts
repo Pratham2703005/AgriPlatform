@@ -222,7 +222,7 @@ export class FarmAPI {
       crop: farmData.crop || '',
       plantingDate: farmData.plantingDate || '',
       harvestDate: farmData.harvestDate || '',
-      description: farmData.description,
+    description: farmData.description ?? '',
       coordinates: farmData.coordinates,
       area: farmData.area,
     };
@@ -242,7 +242,7 @@ export class FarmAPI {
       crop: apiData.crop,
       plantingDate: apiData.plantingDate,
       harvestDate: apiData.harvestDate,
-      description: apiData.description,
+    description: apiData.description ?? '',
       coordinates:
         typeof apiData.coordinates === 'object' &&
         'coordinates' in apiData.coordinates &&

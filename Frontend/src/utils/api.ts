@@ -26,7 +26,7 @@ function createApiError(response: Response, data?: unknown): ApiError {
       response.statusText ||
       'An error occurred',
     statusCode: response.status,
-    details: errorData?.details as Record<string, unknown> | undefined,
+    details: (errorData?.details as Record<string, unknown>) ?? {},
   };
 }
 
@@ -41,12 +41,8 @@ export function createAppError(
   const error: AppError = {
     type,
     message,
+    details: details ?? {},
   };
-
-  if (details !== undefined) {
-    error.details = details;
-  }
-
   return error;
 }
 
