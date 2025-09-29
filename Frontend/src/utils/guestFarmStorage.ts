@@ -9,9 +9,12 @@ export function calculatePolygonArea(coordinates: number[][]): number {
     const curr = coordinates[i];
     const next = coordinates[(i + 1) % n];
     if (
-      Array.isArray(curr) && Array.isArray(next) &&
-      typeof curr[0] === 'number' && typeof curr[1] === 'number' &&
-      typeof next[0] === 'number' && typeof next[1] === 'number'
+      Array.isArray(curr) &&
+      Array.isArray(next) &&
+      typeof curr[0] === 'number' &&
+      typeof curr[1] === 'number' &&
+      typeof next[0] === 'number' &&
+      typeof next[1] === 'number'
     ) {
       area += curr[0] * next[1];
       area -= next[0] * curr[1];
@@ -23,7 +26,6 @@ import type { Farm, FarmFormData } from '../types/farm';
 
 const GUEST_FARMS_KEY = 'agriplatform_guest_farms';
 const GUEST_COUNTER_KEY = 'agriplatform_guest_counter';
-
 
 // GuestFarm type for localStorage
 export type GuestFarm = Omit<Farm, 'userId'> & {
@@ -38,7 +40,10 @@ export class GuestFarmStorage {
    * Get next available ID for guest farms
    */
   private static getNextId(): string {
-    const currentCounter = parseInt(localStorage.getItem(GUEST_COUNTER_KEY) || '0', 10);
+    const currentCounter = parseInt(
+      localStorage.getItem(GUEST_COUNTER_KEY) || '0',
+      10
+    );
     const nextCounter = currentCounter + 1;
     localStorage.setItem(GUEST_COUNTER_KEY, nextCounter.toString());
     return `guest_${nextCounter}`;
@@ -51,7 +56,7 @@ export class GuestFarmStorage {
     try {
       const farmsJson = localStorage.getItem(GUEST_FARMS_KEY);
       if (!farmsJson) return [];
-      
+
       const farms = JSON.parse(farmsJson);
       return Array.isArray(farms) ? farms : [];
     } catch (error) {
@@ -71,33 +76,43 @@ export class GuestFarmStorage {
   /**
    * Add a new guest farm
    */
-  static addFarm(farmData: FarmFormData, coordinates: number[][], area: number): GuestFarm {
+  static addFarm(
+    farmData: FarmFormData,
+    coordinates: number[][],
+    area: number
+  ): GuestFarm {
     const farms = this.getFarms();
     const now = new Date().toISOString();
-    
+
     const newFarm: GuestFarm = {
       id: this.getNextId(),
       ...farmData,
+      description: farmData.description ?? '',
       coordinates,
       area,
       createdAt: now,
       updatedAt: now,
-  isGuest: true
+      isGuest: true,
     };
 
     farms.push(newFarm);
     localStorage.setItem(GUEST_FARMS_KEY, JSON.stringify(farms));
-    
+
     return newFarm;
   }
 
   /**
    * Update an existing guest farm
    */
-  static updateFarm(id: string, updateData: Partial<FarmFormData & { coordinates?: number[][]; area?: number }>): GuestFarm | null {
+  static updateFarm(
+    id: string,
+    updateData: Partial<
+      FarmFormData & { coordinates?: number[][]; area?: number }
+    >
+  ): GuestFarm | null {
     const farms = this.getFarms();
     const farmIndex = farms.findIndex(farm => farm.id === id);
-    
+
     if (farmIndex === -1) {
       console.warn(`Guest farm with ID ${id} not found`);
       return null;
@@ -115,12 +130,12 @@ export class GuestFarmStorage {
       area: updateData.area ?? farm?.area ?? 0,
       createdAt: farm?.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      isGuest: true
+      isGuest: true,
     };
 
     farms[farmIndex] = updatedFarm;
     localStorage.setItem(GUEST_FARMS_KEY, JSON.stringify(farms));
-    
+
     return updatedFarm;
   }
 
@@ -130,7 +145,7 @@ export class GuestFarmStorage {
   static deleteFarm(id: string): boolean {
     const farms = this.getFarms();
     const filteredFarms = farms.filter(farm => farm.id !== id);
-    
+
     if (filteredFarms.length === farms.length) {
       console.warn(`Guest farm with ID ${id} not found`);
       return false;
@@ -165,7 +180,9 @@ export class GuestFarmStorage {
   /**
    * Convert guest farm to format suitable for API migration
    */
-  static convertToMigrationFormat(guestFarm: GuestFarm): FarmFormData & { coordinates: number[][]; area: number } {
+  static convertToMigrationFormat(
+    guestFarm: GuestFarm
+  ): FarmFormData & { coordinates: number[][]; area: number } {
     return {
       name: guestFarm.name,
       crop: guestFarm.crop,
@@ -173,14 +190,17 @@ export class GuestFarmStorage {
       harvestDate: guestFarm.harvestDate,
       description: guestFarm.description ?? '',
       coordinates: guestFarm.coordinates,
-      area: guestFarm.area
+      area: guestFarm.area,
     };
   }
 
   /**
    * Get all guest farms in migration format
    */
-  static getAllForMigration(): (FarmFormData & { coordinates: number[][]; area: number })[] {
+  static getAllForMigration(): (FarmFormData & {
+    coordinates: number[][];
+    area: number;
+  })[] {
     const guestFarms = this.getFarms();
     return guestFarms.map(farm => this.convertToMigrationFormat(farm));
   }

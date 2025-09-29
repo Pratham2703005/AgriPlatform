@@ -160,6 +160,13 @@ export class FarmAPI {
       let formattedData: UpdateFarmRequest = { ...farmData };
 
       if (
+        formattedData.description === undefined &&
+        farmData.description === undefined
+      ) {
+        formattedData.description = '';
+      }
+
+      if (
         formattedData.coordinates &&
         Array.isArray(formattedData.coordinates) &&
         formattedData.coordinates.length > 0

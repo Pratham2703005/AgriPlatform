@@ -1,2 +1,2 @@
 // Re-export all hooks
-export { useAuth } from './useAuth';
+export * from './useAuth';

@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom';
 // ProtectedRoute component for route protection
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
+export { useAuth } from '../hooks/useAuth';
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) {
