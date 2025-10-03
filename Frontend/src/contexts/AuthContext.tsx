@@ -135,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               result: { success: false, migratedCount: 0, errors: ['Migration failed'] } 
             });
           }
+        } else if (hasGuestFarms && migrationStatus.isLoading) {
+          console.log('⚠️ Migration already in progress, skipping duplicate trigger');
         }
         
         // Small delay to ensure user context is properly set before navigation
@@ -199,6 +201,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               result: { success: false, migratedCount: 0, errors: ['Migration failed'] } 
             });
           }
+        } else if (hasGuestFarms && migrationStatus.isLoading) {
+          console.log('⚠️ Migration already in progress, skipping duplicate trigger');
         }
         
         return { success: true };

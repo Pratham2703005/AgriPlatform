@@ -119,19 +119,35 @@ export class FarmAPI {
    */
   static async createFarm(farmData: CreateFarmRequest): Promise<FarmResponse> {
     try {
+      console.log('📤 FarmAPI.createFarm called with:', farmData);
+      
       const authConfig = {
         ...AuthAPI.getAuthConfig(),
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${AuthAPI.getToken()}`, // agar tum token use kar rahe ho
+          Authorization: `Bearer ${AuthAPI.getToken()}`,
         },
         withCredentials: true,
+        timeout: 60000, // Increase timeout to 60 seconds for farm creation
       };
+      
+      console.log('🔑 Auth config for farm creation:', {
+        hasToken: !!AuthAPI.getToken(),
+        withCredentials: authConfig.withCredentials,
+        timeout: authConfig.timeout
+      });
 
       const response = await post<FarmResponse>('/farms', farmData, authConfig);
+      console.log('✅ FarmAPI.createFarm response:', response);
       return response;
     } catch (error) {
-      console.error('Error creating farm:', error);
+      console.error('❌ FarmAPI.createFarm error details:', {
+        error: error,
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined,
+        farmData: farmData
+      });
       throw error;
     }
   }
@@ -224,15 +240,31 @@ export class FarmAPI {
   static transformToApiFormat(
     farmData: Partial<Farm> & { coordinates: number[][]; area: number }
   ): CreateFarmRequest {
-    return {
-      name: farmData.name || '',
-      crop: farmData.crop || '',
-      plantingDate: farmData.plantingDate || '',
-      harvestDate: farmData.harvestDate || '',
-      description: farmData.description ?? '',
+    // Validate required fields
+    if (!farmData.name || !farmData.crop || !farmData.plantingDate || !farmData.harvestDate) {
+      throw new Error('Missing required farm fields: name, crop, plantingDate, harvestDate');
+    }
+    
+    if (!farmData.coordinates || !Array.isArray(farmData.coordinates) || farmData.coordinates.length < 3) {
+      throw new Error('Invalid coordinates: must be an array with at least 3 points');
+    }
+    
+    if (!farmData.area || farmData.area <= 0) {
+      throw new Error('Invalid area: must be greater than 0');
+    }
+    
+    const transformed = {
+      name: farmData.name.trim(),
+      crop: farmData.crop.trim(),
+      plantingDate: farmData.plantingDate,
+      harvestDate: farmData.harvestDate,
+      description: farmData.description?.trim() ?? '',
       coordinates: farmData.coordinates,
       area: farmData.area,
     };
+    
+    console.log('🔄 Transformed farm data:', transformed);
+    return transformed;
   }
 
   /**

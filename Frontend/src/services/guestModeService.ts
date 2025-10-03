@@ -100,16 +100,40 @@ export class GuestModeService {
 
       console.log(`🔄 Starting migration of ${guestFarms.length} guest farms...`);
 
-      // Migrate farms with simplified error handling
+      // Get existing farms first to prevent duplicates
+      let existingFarmNames: string[] = [];
+      try {
+        const existingFarms = await FarmAPI.getFarms(1, 100); // Get more farms to check
+        if (existingFarms.code === 1) {
+          existingFarmNames = existingFarms.result.farms.map(f => f.name.toLowerCase().trim());
+          console.log('📋 Existing farm names:', existingFarmNames);
+        }
+      } catch (e) {
+        console.log('⚠️ Could not fetch existing farms, proceeding with migration');
+      }
+
+      // Migrate farms with duplicate checking
       for (const farmData of guestFarms) {
         try {
+          // Check for duplicate names
+          const farmNameLower = farmData.name.toLowerCase().trim();
+          if (existingFarmNames.includes(farmNameLower)) {
+            console.log(`⏭️ Skipping farm "${farmData.name}" - already exists`);
+            migratedCount++; // Count as successful to avoid error
+            continue;
+          }
+
           const createRequest = FarmAPI.transformToApiFormat(farmData);
           console.log('📤 Migrating farm:', farmData.name);
+          console.log('🔍 Farm data being sent:', createRequest);
           
           const response = await FarmAPI.createFarm(createRequest);
+          console.log('📥 Migration response:', response);
 
           if (response.code === 1) {
             migratedCount++;
+            // Add to existing names to prevent duplicates in same migration
+            existingFarmNames.push(farmNameLower);
             console.log(`✅ Successfully migrated farm: ${farmData.name}`);
           } else {
             const errorMsg = `Failed to migrate farm "${farmData.name}": ${response.message}`;
@@ -117,14 +141,33 @@ export class GuestModeService {
             errors.push(errorMsg);
           }
         } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('🐛 Full migration error details:', {
+            farmName: farmData.name,
+            error: error,
+            errorType: typeof error,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            errorStack: error instanceof Error ? error.stack : undefined
+          });
+          
+          // Check if it's a timeout error but farm might have been created
+          const isTimeoutError = error && typeof error === 'object' && 
+            'type' in error && error.type === 'network' &&
+            'message' in error && error.message === 'Request timeout';
+            
+          if (isTimeoutError) {
+            console.log('⏱️ Timeout detected - farm might have been created anyway');
+            // Don't treat timeout as complete failure since farm might exist
+            migratedCount++;
+          }
+          
+          const errorMessage = error instanceof Error ? error.message : JSON.stringify(error) || 'Unknown error';
           const errorMsg = `Failed to migrate farm "${farmData.name}": ${errorMessage}`;
           console.error(`❌ ${errorMsg}`);
           errors.push(errorMsg);
         }
 
-        // Small delay to prevent rate limiting
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Longer delay to prevent rate limiting and reduce server load
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // Always clear guest farms after migration attempt
