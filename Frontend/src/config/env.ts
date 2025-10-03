@@ -76,7 +76,7 @@ export const env: EnvironmentConfig = {
   // API Configuration
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 
     (import.meta.env.MODE === 'production' 
-      ? 'https://your-render-app.onrender.com' 
+      ? 'https://agriplatform.onrender.com' 
       : 'http://localhost:8000'),
   API_TIMEOUT: getNumberEnvVar('VITE_API_TIMEOUT', 30000),
 
