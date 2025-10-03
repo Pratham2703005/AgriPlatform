@@ -103,6 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Check if we need to migrate guest farms
       const hasGuestFarms = GuestModeService.hasGuestFarmsToMigrate();
+      const guestFarmCount = GuestModeService.getGuestFarmsCount();
+      console.log('🔍 Pre-login guest farm check:', { hasGuestFarms, guestFarmCount });
       
       const response = await AuthAPI.login({ email, password });
       console.log('📥 Login response:', response);
@@ -159,6 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Check if we need to migrate guest farms
       const hasGuestFarms = GuestModeService.hasGuestFarmsToMigrate();
+      const guestFarmCount = GuestModeService.getGuestFarmsCount();
+      console.log('🔍 Pre-registration guest farm check:', { hasGuestFarms, guestFarmCount });
       
       const response = await AuthAPI.register({
         fullName: name,

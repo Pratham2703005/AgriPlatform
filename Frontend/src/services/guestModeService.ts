@@ -88,7 +88,13 @@ export class GuestModeService {
       const errors: string[] = [];
       let migratedCount = 0;
 
+      console.log('🔍 Migration debug - Guest farms found:', {
+        count: guestFarms.length,
+        farms: guestFarms.map(f => ({ name: f.name, crop: f.crop }))
+      });
+
       if (guestFarms.length === 0) {
+        console.log('⚠️ No guest farms to migrate');
         return { success: true, migratedCount: 0, errors: [] };
       }
 
@@ -96,14 +102,17 @@ export class GuestModeService {
       try {
         const existingFarms = await FarmAPI.getFarms(1, 1);
         if (existingFarms.code === 1 && existingFarms.result.farms.length > 0) {
-          console.warn('User already has farms, skipping migration to prevent duplicates');
+          console.warn('🙅 User already has farms, skipping migration to prevent duplicates');
+          console.log('📈 Existing farms count:', existingFarms.result.farms.length);
           // Still clear guest farms since user already has data
           GuestFarmStorage.clearAllFarms();
           this.disableGuestMode();
-          return { success: true, migratedCount: 0, errors: ['User already has farms'] };
+          return { success: true, migratedCount: 0, errors: ['User already has farms - skipped to prevent duplicates'] };
+        } else {
+          console.log('✅ User has no existing farms, proceeding with migration');
         }
       } catch (error) {
-        console.log('Could not check existing farms, proceeding with migration:', error);
+        console.log('⚠️ Could not check existing farms, proceeding with migration:', error);
       }
 
       console.log(`🔄 Starting migration of ${guestFarms.length} guest farms...`);
@@ -192,7 +201,15 @@ export class GuestModeService {
    * Check if there are guest farms to migrate
    */
   static hasGuestFarmsToMigrate(): boolean {
-    return GuestFarmStorage.hasGuestFarms();
+    const hasGuestFarms = GuestFarmStorage.hasGuestFarms();
+    const guestFarmCount = GuestFarmStorage.getCount();
+    console.log('🔍 hasGuestFarmsToMigrate check:', { hasGuestFarms, guestFarmCount });
+    
+    // Also check localStorage directly for debugging
+    const rawData = localStorage.getItem('guest_farms');
+    console.log('🔍 localStorage guest_farms:', rawData);
+    
+    return hasGuestFarms;
   }
 }
 
