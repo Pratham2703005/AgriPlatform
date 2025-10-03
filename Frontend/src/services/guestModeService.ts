@@ -98,79 +98,44 @@ export class GuestModeService {
         return { success: true, migratedCount: 0, errors: [] };
       }
 
-      // Check if user already has farms to prevent duplication
-      try {
-        const existingFarms = await FarmAPI.getFarms(1, 1);
-        if (existingFarms.code === 1 && existingFarms.result.farms.length > 0) {
-          console.warn('🙅 User already has farms, skipping migration to prevent duplicates');
-          console.log('📈 Existing farms count:', existingFarms.result.farms.length);
-          // Still clear guest farms since user already has data
-          GuestFarmStorage.clearAllFarms();
-          this.disableGuestMode();
-          return { success: true, migratedCount: 0, errors: ['User already has farms - skipped to prevent duplicates'] };
-        } else {
-          console.log('✅ User has no existing farms, proceeding with migration');
-        }
-      } catch (error) {
-        console.log('⚠️ Could not check existing farms, proceeding with migration:', error);
-      }
-
       console.log(`🔄 Starting migration of ${guestFarms.length} guest farms...`);
 
-      // Migrate farms in parallel for better performance (max 3 concurrent)
-      const BATCH_SIZE = 3;
-      for (let i = 0; i < guestFarms.length; i += BATCH_SIZE) {
-        const batch = guestFarms.slice(i, i + BATCH_SIZE);
-        
-        const batchPromises = batch.map(async (farmData) => {
-          try {
-            const createRequest = FarmAPI.transformToApiFormat(farmData);
-            const response = await FarmAPI.createFarm(createRequest);
+      // Migrate farms with simplified error handling
+      for (const farmData of guestFarms) {
+        try {
+          const createRequest = FarmAPI.transformToApiFormat(farmData);
+          console.log('📤 Migrating farm:', farmData.name);
+          
+          const response = await FarmAPI.createFarm(createRequest);
 
-            if (response.code === 1) {
-              console.log(`✅ Migrated farm: ${farmData.name}`);
-              return { success: true, farmName: farmData.name };
-            } else {
-              const errorMsg = `Failed to migrate farm "${farmData.name}": ${response.message}`;
-              console.error(`❌ ${errorMsg}`);
-              return { success: false, error: errorMsg };
-            }
-          } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            const errorMsg = `Failed to migrate farm "${farmData.name}": ${errorMessage}`;
-            console.error(`❌ ${errorMsg}`);
-            return { success: false, error: errorMsg };
-          }
-        });
-
-        const batchResults = await Promise.all(batchPromises);
-        
-        // Process batch results
-        batchResults.forEach(result => {
-          if (result.success) {
+          if (response.code === 1) {
             migratedCount++;
-          } else if (result.error) {
-            errors.push(result.error);
+            console.log(`✅ Successfully migrated farm: ${farmData.name}`);
+          } else {
+            const errorMsg = `Failed to migrate farm "${farmData.name}": ${response.message}`;
+            console.error(`❌ ${errorMsg}`);
+            errors.push(errorMsg);
           }
-        });
-
-        // Small delay between batches to prevent rate limiting
-        if (i + BATCH_SIZE < guestFarms.length) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const errorMsg = `Failed to migrate farm "${farmData.name}": ${errorMessage}`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
         }
+
+        // Small delay to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
-      const success = migratedCount > 0;
-
-      if (success) {
-        // Clear guest farms after successful migration
-        GuestFarmStorage.clearAllFarms();
-        // Disable guest mode
-        this.disableGuestMode();
-        console.log(
-          `✅ Migration completed: ${migratedCount}/${guestFarms.length} farms migrated`
-        );
-      }
+      // Always clear guest farms after migration attempt
+      console.log('🧹 Cleaning up guest farms...');
+      GuestFarmStorage.clearAllFarms();
+      this.disableGuestMode();
+      
+      const success = migratedCount > 0 || guestFarms.length === 0;
+      console.log(
+        `✅ Migration completed: ${migratedCount}/${guestFarms.length} farms migrated, success: ${success}`
+      );
 
       return { success, migratedCount, errors };
     } finally {
@@ -206,10 +171,20 @@ export class GuestModeService {
     console.log('🔍 hasGuestFarmsToMigrate check:', { hasGuestFarms, guestFarmCount });
     
     // Also check localStorage directly for debugging
-    const rawData = localStorage.getItem('guest_farms');
+    const rawData = localStorage.getItem('agriplatform_guest_farms');
     console.log('🔍 localStorage guest_farms:', rawData);
     
     return hasGuestFarms;
+  }
+
+  /**
+   * Force migration for debugging (call this manually in console)
+   */
+  static async debugMigration() {
+    console.log('🐛 DEBUG: Force triggering migration...');
+    const result = await this.migrateGuestFarmsToUser();
+    console.log('🐛 DEBUG: Migration result:', result);
+    return result;
   }
 }
 
