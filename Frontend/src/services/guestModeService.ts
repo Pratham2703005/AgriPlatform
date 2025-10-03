@@ -102,8 +102,8 @@ export class GuestModeService {
           this.disableGuestMode();
           return { success: true, migratedCount: 0, errors: ['User already has farms'] };
         }
-      } catch (e) {
-        console.log('Could not check existing farms, proceeding with migration');
+      } catch (error) {
+        console.log('Could not check existing farms, proceeding with migration:', error);
       }
 
       console.log(`🔄 Starting migration of ${guestFarms.length} guest farms...`);
