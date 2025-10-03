@@ -97,13 +97,16 @@ VITE_API_TIMEOUT=30000
 
 ### Step 7: Test Backend
 1. Visit your Render URL - should show: `{"message":"AgriPlatform Backend is running!","status":"healthy"}`
-2. Test API endpoint: `https://your-app.onrender.com/user` (should return route info)
+2. Test API endpoint: `https://agriplatform.onrender.com/user` (should return route info)
+
+**✅ DEPLOYMENT SUCCESSFUL!** 
+Your backend is now live at: **https://agriplatform.onrender.com**
 
 ### Step 8: Update Frontend
 1. Go to your Vercel dashboard
 2. Update environment variable:
    ```
-   VITE_API_BASE_URL=https://your-render-app.onrender.com
+   VITE_API_BASE_URL=https://agriplatform.onrender.com
    ```
 3. Redeploy your frontend
 
