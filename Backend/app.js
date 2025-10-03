@@ -10,11 +10,25 @@ const app = express();
 
 // Middleware setup
 dotenv.config();
-app.use(cors({credentials: true, origin:"http://localhost:3000" }));
+
+// CORS configuration for production
+const corsOptions = {
+  credentials: true,
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL, 'https://your-vercel-app.vercel.app'] 
+    : "http://localhost:3000"
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
 app.locals.ee = ee;
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({ message: 'AgriPlatform Backend is running!', status: 'healthy' });
+});
 
 // Routes
 app.use("/user", userRoutes);

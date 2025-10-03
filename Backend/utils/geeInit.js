@@ -5,11 +5,20 @@ const path = require('path');
 function initializeEE() {
   return new Promise((resolve, reject) => {
     try {
-      const privateKeyPath = path.join(__dirname, '..', 'earth-engine-service-account.json');
-      if (!fs.existsSync(privateKeyPath)) {
-        throw new Error(`Service account key not found at: ${privateKeyPath}`);
+      let privateKey;
+      
+      // Try to get from environment variable first (for production)
+      if (process.env.GOOGLE_EARTH_ENGINE_KEY) {
+        privateKey = JSON.parse(process.env.GOOGLE_EARTH_ENGINE_KEY);
+      } else {
+        // Fallback to file (for development)
+        const privateKeyPath = path.join(__dirname, '..', 'earth-engine-service-account.json');
+        if (!fs.existsSync(privateKeyPath)) {
+          throw new Error(`Service account key not found at: ${privateKeyPath}`);
+        }
+        privateKey = JSON.parse(fs.readFileSync(privateKeyPath, 'utf8'));
       }
-      const privateKey = JSON.parse(fs.readFileSync(privateKeyPath, 'utf8'));
+      
       console.log('🔑 Authenticating with Google Earth Engine...');
       ee.data.authenticateViaPrivateKey(privateKey, (error) => {
         if (error) {
