@@ -6,6 +6,8 @@ import type { User } from '../types/user';
  * Service for managing guest mode functionality
  */
 export class GuestModeService {
+  private static _migrating = false;
+
   /**
    * Create a guest user object
    */
@@ -73,55 +75,98 @@ export class GuestModeService {
     migratedCount: number;
     errors: string[];
   }> {
-    const guestFarms = GuestFarmStorage.getAllForMigration();
-    const errors: string[] = [];
-    let migratedCount = 0;
-
-    if (guestFarms.length === 0) {
-      return { success: true, migratedCount: 0, errors: [] };
+    // Prevent multiple concurrent migrations
+    if (this._migrating) {
+      console.warn('Migration already in progress, skipping duplicate call');
+      return { success: false, migratedCount: 0, errors: ['Migration already in progress'] };
     }
 
-    console.log(`🔄 Starting migration of ${guestFarms.length} guest farms...`);
+    this._migrating = true;
+    
+    try {
+      const guestFarms = GuestFarmStorage.getAllForMigration();
+      const errors: string[] = [];
+      let migratedCount = 0;
 
-    // Migrate each farm sequentially to avoid overwhelming the server
-    for (const farmData of guestFarms) {
-      try {
-        const createRequest = FarmAPI.transformToApiFormat(farmData);
-        const response = await FarmAPI.createFarm(createRequest);
-
-        if (response.code === 1) {
-          migratedCount++;
-          console.log(`✅ Migrated farm: ${farmData.name}`);
-        } else {
-          const errorMsg = `Failed to migrate farm "${farmData.name}": ${response.message}`;
-          console.error(`❌ ${errorMsg}`);
-          errors.push(errorMsg);
-        }
-      } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
-        const errorMsg = `Failed to migrate farm "${farmData.name}": ${errorMessage}`;
-        console.error(`❌ ${errorMsg}`);
-        errors.push(errorMsg);
+      if (guestFarms.length === 0) {
+        return { success: true, migratedCount: 0, errors: [] };
       }
 
-      // Add a small delay to prevent rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Check if user already has farms to prevent duplication
+      try {
+        const existingFarms = await FarmAPI.getFarms(1, 1);
+        if (existingFarms.code === 1 && existingFarms.result.farms.length > 0) {
+          console.warn('User already has farms, skipping migration to prevent duplicates');
+          // Still clear guest farms since user already has data
+          GuestFarmStorage.clearAllFarms();
+          this.disableGuestMode();
+          return { success: true, migratedCount: 0, errors: ['User already has farms'] };
+        }
+      } catch (e) {
+        console.log('Could not check existing farms, proceeding with migration');
+      }
+
+      console.log(`🔄 Starting migration of ${guestFarms.length} guest farms...`);
+
+      // Migrate farms in parallel for better performance (max 3 concurrent)
+      const BATCH_SIZE = 3;
+      for (let i = 0; i < guestFarms.length; i += BATCH_SIZE) {
+        const batch = guestFarms.slice(i, i + BATCH_SIZE);
+        
+        const batchPromises = batch.map(async (farmData) => {
+          try {
+            const createRequest = FarmAPI.transformToApiFormat(farmData);
+            const response = await FarmAPI.createFarm(createRequest);
+
+            if (response.code === 1) {
+              console.log(`✅ Migrated farm: ${farmData.name}`);
+              return { success: true, farmName: farmData.name };
+            } else {
+              const errorMsg = `Failed to migrate farm "${farmData.name}": ${response.message}`;
+              console.error(`❌ ${errorMsg}`);
+              return { success: false, error: errorMsg };
+            }
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorMsg = `Failed to migrate farm "${farmData.name}": ${errorMessage}`;
+            console.error(`❌ ${errorMsg}`);
+            return { success: false, error: errorMsg };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Process batch results
+        batchResults.forEach(result => {
+          if (result.success) {
+            migratedCount++;
+          } else if (result.error) {
+            errors.push(result.error);
+          }
+        });
+
+        // Small delay between batches to prevent rate limiting
+        if (i + BATCH_SIZE < guestFarms.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+
+      const success = migratedCount > 0;
+
+      if (success) {
+        // Clear guest farms after successful migration
+        GuestFarmStorage.clearAllFarms();
+        // Disable guest mode
+        this.disableGuestMode();
+        console.log(
+          `✅ Migration completed: ${migratedCount}/${guestFarms.length} farms migrated`
+        );
+      }
+
+      return { success, migratedCount, errors };
+    } finally {
+      this._migrating = false;
     }
-
-    const success = migratedCount > 0;
-
-    if (success) {
-      // Clear guest farms after successful migration
-      GuestFarmStorage.clearAllFarms();
-      // Disable guest mode
-      this.disableGuestMode();
-      console.log(
-        `✅ Migration completed: ${migratedCount}/${guestFarms.length} farms migrated`
-      );
-    }
-
-    return { success, migratedCount, errors };
   }
 
   /**

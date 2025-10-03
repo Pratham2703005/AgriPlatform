@@ -112,8 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsGuestMode(false);
         console.log('✅ Login successful, user set:', response.result.user);
         
-        // Migrate guest farms if any exist
-        if (hasGuestFarms) {
+        // Migrate guest farms if any exist (only if not already migrating)
+        if (hasGuestFarms && !migrationStatus.isLoading) {
           console.log('🔄 Starting guest farm migration after login...');
           setMigrationStatus({ isLoading: true, result: null });
           
@@ -174,8 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsGuestMode(false);
         console.log('✅ Registration successful, user set:', response.result.user);
         
-        // Migrate guest farms if any exist
-        if (hasGuestFarms) {
+        // Migrate guest farms if any exist (only if not already migrating)
+        if (hasGuestFarms && !migrationStatus.isLoading) {
           console.log('🔄 Starting guest farm migration after registration...');
           setMigrationStatus({ isLoading: true, result: null });
           

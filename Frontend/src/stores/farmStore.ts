@@ -128,6 +128,18 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       return;
     }
 
+    // Check for duplicate farm names to prevent accidental duplicates
+    const existingFarms = get().farms;
+    const duplicateName = existingFarms.find(farm => 
+      farm.name.toLowerCase().trim() === farmData.name.toLowerCase().trim()
+    );
+    
+    if (duplicateName) {
+      console.warn('⚠️ Farm with similar name already exists:', duplicateName.name);
+      set({ error: `A farm named "${duplicateName.name}" already exists. Please choose a different name.` });
+      return;
+    }
+
     console.log('🌱 farmStore: Starting farm creation', { farmData, area });
 
     if (get().guestMode) {
