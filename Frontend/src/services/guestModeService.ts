@@ -108,8 +108,8 @@ export class GuestModeService {
           existingFarmNames = existingFarms.result.farms.map(f => f.name.toLowerCase().trim());
           console.log('📋 Existing farm names:', existingFarmNames);
         }
-      } catch (e) {
-        console.log('⚠️ Could not fetch existing farms, proceeding with migration');
+      } catch (error) {
+        console.log('⚠️ Could not fetch existing farms, proceeding with migration:', error);
       }
 
       // Migrate farms with duplicate checking
