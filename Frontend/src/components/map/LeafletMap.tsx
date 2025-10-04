@@ -97,8 +97,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   height = '400px',
   className = ''
 }) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [currentPolygon, setCurrentPolygon] = useState<[number, number][]>([]);
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
   // Square control state
@@ -107,13 +105,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const mapRef = useRef<L.Map | null>(null);
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
-  // Convert initial coordinates if provided
+  // Convert initial coordinates if provided - currently unused but kept for future functionality
   useEffect(() => {
     if (initialCoordinates.length > 0) {
-      const leafletCoords: [number, number][] = initialCoordinates
-        .filter(coord => coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
-        .map(coord => [coord[1] as number, coord[0] as number]);
-      setCurrentPolygon(leafletCoords); // Set for future polygon display functionality
+      // Future: Display initial polygon coordinates on map
+      console.log('Initial coordinates provided:', initialCoordinates);
     }
   }, [initialCoordinates]);
 
@@ -122,7 +118,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   // Function to handle square mode
   const handleSquareMode = () => {
     setIsSquareMode(!isSquareMode);
-    setCurrentPolygon([]);
     setShowStyleSelector(false);
   };
 
