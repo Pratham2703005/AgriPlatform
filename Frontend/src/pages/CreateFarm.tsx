@@ -36,7 +36,7 @@ export const CreateFarm: React.FC = () => {
         const planting = new Date(plantingDate);
         const harvestDate = new Date(planting.getTime() + (cropInfo.min_duration * 24 * 60 * 60 * 1000));
         const harvestDateString = harvestDate.toISOString().split('T')[0];
-        (setValue as any)('harvestDate', harvestDateString);
+        setValue('harvestDate' as keyof FarmFormData, harvestDateString);
       }
     }
   }, [plantingDate, selectedCrop, setValue]);

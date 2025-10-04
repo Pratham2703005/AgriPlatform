@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, useMapEvents, Polygon, ScaleControl, Rectangle } from 'react-leaflet';
+import { MapContainer, TileLayer, useMapEvents, ScaleControl, Rectangle } from 'react-leaflet';
 import L, { type LeafletMouseEvent } from 'leaflet';
-import { Square, Check, Trash2, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed } from 'lucide-react';
+import { Square, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import './map.css';
-import { formatHectares } from '@/utils';
+
 
 // Fix for default markers
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -22,15 +23,11 @@ interface LeafletMapProps {
   className?: string;
 }
 
-// Maximum allowed area in hectares (100 km² = 10,000 hectares)
-const MAX_AREA_HECTARES = parseInt(import.meta.env.VITE_MAX_AREA_HECTARES  || "10000");
+// Maximum allowed area in hectares (100 km² = 10,000 hectares) - currently unused
+// const MAX_AREA_HECTARES = parseInt(import.meta.env.VITE_MAX_AREA_HECTARES  || "10000");
 interface DrawingControlsProps {
   onPolygonComplete: ((coordinates: number[][], area: number) => void) | undefined;
-  isDrawing: boolean;
-  setIsDrawing: (drawing: boolean) => void;
-  currentPolygon: [number, number][];
-  setCurrentPolygon: (polygon: [number, number][]) => void;
-  // New props for square control
+  // Square control props
   isSquareMode: boolean;
   setIsSquareMode: (mode: boolean) => void;
   squareBounds: [[number, number], [number, number]] | null;
@@ -39,19 +36,15 @@ interface DrawingControlsProps {
 }
 
 const DrawingControls: React.FC<DrawingControlsProps> = ({
-  onPolygonComplete,
-  isDrawing,
-  setIsDrawing,
-  currentPolygon,
-  setCurrentPolygon,
-  // New props for square control
+  // onPolygonComplete - keeping for future functionality
+  // Square control props
   isSquareMode,
   setIsSquareMode,
-  squareBounds,
+  // squareBounds - keeping for future functionality
   setSquareBounds,
   onSquareComplete
 }) => {
-  const map = useMapEvents({
+  useMapEvents({
     click: (e: LeafletMouseEvent) => {
       if (isSquareMode) {
         // Create a 10km² square centered at the clicked location
@@ -96,29 +89,7 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
   return null;
 };
 
-const calculatePolygonArea = (coordinates: [number, number][]): number => {
-  if (coordinates.length < 3) return 0;
 
-  let area = 0;
-  const n = coordinates.length;
-
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const currentPoint = coordinates[i];
-    const nextPoint = coordinates[j];
-
-    if (currentPoint && nextPoint) {
-      area += currentPoint[1] * nextPoint[0]; // lng * lat
-      area -= nextPoint[1] * currentPoint[0]; // lng * lat
-    }
-  }
-
-  area = Math.abs(area) / 2;
-
-  // Convert from square degrees to hectares (approximate)
-  const hectares = area * 111320 * 111320 / 10000;
-  return Math.round(hectares * 100) / 100;
-};
 
 export const LeafletMap: React.FC<LeafletMapProps> = ({
   onPolygonComplete,
@@ -126,11 +97,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   height = '400px',
   className = ''
 }) => {
-  const [isDrawing, setIsDrawing] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [currentPolygon, setCurrentPolygon] = useState<[number, number][]>([]);
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
-  // New state for square control
+  // Square control state
   const [isSquareMode, setIsSquareMode] = useState(false);
   const [squareBounds, setSquareBounds] = useState<[[number, number], [number, number]] | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -142,26 +113,17 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       const leafletCoords: [number, number][] = initialCoordinates
         .filter(coord => coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
         .map(coord => [coord[1] as number, coord[0] as number]);
-      setCurrentPolygon(leafletCoords);
+      setCurrentPolygon(leafletCoords); // Set for future polygon display functionality
     }
   }, [initialCoordinates]);
 
 
 
-  // New function to handle square mode
+  // Function to handle square mode
   const handleSquareMode = () => {
     setIsSquareMode(!isSquareMode);
-    setIsDrawing(false);
     setCurrentPolygon([]);
     setShowStyleSelector(false);
-  };
-
-  const handleClearDrawing = () => {
-    setIsDrawing(false);
-    setCurrentPolygon([]);
-    // Also clear square
-    setIsSquareMode(false);
-    setSquareBounds(null);
   };
 
 
@@ -223,21 +185,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     Number(import.meta.env.VITE_MAP_DEFAULT_CENTER_LNG) || 77.2090
   ];
 
-  // Function to get square coordinates for debugger
-  const getSquareCoordinates = (): number[][] => {
-    if (!squareBounds) return [];
-    
-    const [[south, west], [north, east]] = squareBounds;
-    // Return coordinates in [lng, lat] format as polygon
-    return [
-      [west, south], // bottom-left
-      [east, south], // bottom-right
-      [east, north], // top-right
-      [west, north], // top-left
-      [west, south]  // close polygon
-    ];
-  };
-
   // Function to handle square completion
   const handleSquareComplete = useCallback((coords: number[][], area: number) => {
     if (onPolygonComplete) {
@@ -269,11 +216,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           {/* Drawing Controls */}
           <DrawingControls
             onPolygonComplete={onPolygonComplete}
-            isDrawing={isDrawing}
-            setIsDrawing={setIsDrawing}
-            currentPolygon={currentPolygon}
-            setCurrentPolygon={setCurrentPolygon}
-            // New props for square control
+            // Square control props
             isSquareMode={isSquareMode}
             setIsSquareMode={setIsSquareMode}
             squareBounds={squareBounds}
@@ -361,7 +304,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         </div>
 
         {/* Map Style Selector */}
-        {showStyleSelector && !isDrawing && (
+        {showStyleSelector && (
           <div className="absolute left-full top-0 ml-2 bg-white rounded-md shadow-lg border border-neutral-700 py-1 min-w-[100px]">
             <button
               type="button"
