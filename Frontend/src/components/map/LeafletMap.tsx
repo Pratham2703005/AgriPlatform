@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, useMapEvents, Polygon, ScaleControl } from 'react-leaflet';
-import L, {type LeafletMouseEvent } from 'leaflet';
-import { Square, Pentagon, Check, Trash2, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { MapContainer, TileLayer, useMapEvents, Polygon, ScaleControl, Rectangle } from 'react-leaflet';
+import L, { type LeafletMouseEvent } from 'leaflet';
+import { Square, Check, Trash2, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import './map.css';
 import { formatHectares } from '@/utils';
 
 // Fix for default markers
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -31,8 +30,12 @@ interface DrawingControlsProps {
   setIsDrawing: (drawing: boolean) => void;
   currentPolygon: [number, number][];
   setCurrentPolygon: (polygon: [number, number][]) => void;
-  drawingMode: 'polygon' | 'rectangle' | null;
-  setDrawingMode: (mode: 'polygon' | 'rectangle' | null) => void;
+  // New props for square control
+  isSquareMode: boolean;
+  setIsSquareMode: (mode: boolean) => void;
+  squareBounds: [[number, number], [number, number]] | null;
+  setSquareBounds: (bounds: [[number, number], [number, number]] | null) => void;
+  onSquareComplete: (coordinates: number[][], area: number) => void;
 }
 
 const DrawingControls: React.FC<DrawingControlsProps> = ({
@@ -41,98 +44,52 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
   setIsDrawing,
   currentPolygon,
   setCurrentPolygon,
-  drawingMode,
-  setDrawingMode
+  // New props for square control
+  isSquareMode,
+  setIsSquareMode,
+  squareBounds,
+  setSquareBounds,
+  onSquareComplete
 }) => {
-  const [rectangleStart, setRectangleStart] = useState<[number, number] | null>(null);
-
-  useMapEvents({
+  const map = useMapEvents({
     click: (e: LeafletMouseEvent) => {
-      if (!isDrawing) return;
-
-      const newPoint: [number, number] = [e.latlng.lat, e.latlng.lng];
-
-      if (drawingMode === 'rectangle') {
-        if (!rectangleStart) {
-          setRectangleStart(newPoint);
-          setCurrentPolygon([newPoint]);
-        } else {
-          // Complete rectangle
-          const [lat1, lng1] = rectangleStart;
-          const [lat2, lng2] = newPoint;
-          const rectanglePolygon: [number, number][] = [
-            [lat1, lng1],
-            [lat1, lng2],
-            [lat2, lng2],
-            [lat2, lng1],
-            [lat1, lng1] // Close the rectangle
-          ];
-          
-          // Check area limit before completing
-          const area = calculatePolygonArea(rectanglePolygon);
-          if (area > MAX_AREA_HECTARES) {
-            alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
-            setIsDrawing(false);
-            setDrawingMode(null);
-            setRectangleStart(null);
-            setCurrentPolygon([]);
-            return;
-          }
-          
-          setCurrentPolygon(rectanglePolygon);
-          setIsDrawing(false);
-          setDrawingMode(null);
-          setRectangleStart(null);
-
-          const coordinates = rectanglePolygon.map(point => [point[1], point[0]]);
-          if (onPolygonComplete) {
-            onPolygonComplete(coordinates, area);
-          }
-        }
-      } else if (drawingMode === 'polygon') {
-        const newPolygon = [...currentPolygon, newPoint];
-        setCurrentPolygon(newPolygon);
+      if (isSquareMode) {
+        // Create a 10km² square centered at the clicked location
+        const centerLat = e.latlng.lat;
+        const centerLng = e.latlng.lng;
+        const sideLengthKm = Math.sqrt(10); // ~3.162 km per side for 10 km²
+        
+        // Latitude: 1 degree ≈ 111.32 km (constant everywhere)
+        const latDegreesPerKm = 1 / 111.32;
+        
+        // Longitude: varies by latitude
+        // At latitude φ, 1 degree longitude = 111.32 * cos(φ) km
+        const lngDegreesPerKm = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
+        
+        // Calculate offsets for each dimension
+        const latOffset = (sideLengthKm / 2) * latDegreesPerKm;
+        const lngOffset = (sideLengthKm / 2) * lngDegreesPerKm;
+        
+        // Create bounds [southWest, northEast]
+        const bounds: [[number, number], [number, number]] = [
+          [centerLat - latOffset, centerLng - lngOffset], // South-West
+          [centerLat + latOffset, centerLng + lngOffset]  // North-East
+        ];
+        
+        setSquareBounds(bounds);
+        setIsSquareMode(false);
+        
+        // Notify parent of square completion
+        // Convert bounds to polygon coordinates format [lng, lat]
+        const squareCoords = [
+          [bounds[0][1], bounds[0][0]], // SW
+          [bounds[1][1], bounds[0][0]], // SE
+          [bounds[1][1], bounds[1][0]], // NE
+          [bounds[0][1], bounds[1][0]], // NW
+          [bounds[0][1], bounds[0][0]]  // Close polygon
+        ];
+        onSquareComplete(squareCoords, 1000); // 10km² = 1000 hectares
       }
-    },
-    dblclick: (e: LeafletMouseEvent) => {
-      if (!isDrawing || drawingMode !== 'polygon' || currentPolygon.length < 3) return;
-
-      e.originalEvent.preventDefault();
-      
-      // Check area limit before completing
-      const area = calculatePolygonArea(currentPolygon);
-      if (area > MAX_AREA_HECTARES) {
-        alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
-        setIsDrawing(false);
-        setDrawingMode(null);
-        setCurrentPolygon([]);
-        return;
-      }
-      
-      setIsDrawing(false);
-      setDrawingMode(null);
-
-      // Calculate area and notify parent
-      const coordinates = currentPolygon.map(point => [point[1], point[0]]); // Convert to [lng, lat]
-      if (onPolygonComplete) {
-        onPolygonComplete(coordinates, area);
-      }
-    },
-    mousemove: (e: LeafletMouseEvent) => {
-      if (!isDrawing || drawingMode !== 'rectangle' || !rectangleStart) return;
-
-      const currentPoint: [number, number] = [e.latlng.lat, e.latlng.lng];
-      const [lat1, lng1] = rectangleStart;
-      const [lat2, lng2] = currentPoint;
-
-      const rectanglePolygon: [number, number][] = [
-        [lat1, lng1],
-        [lat1, lng2],
-        [lat2, lng2],
-        [lat2, lng1],
-        [lat1, lng1]
-      ];
-      setCurrentPolygon(rectanglePolygon);
     }
   });
 
@@ -171,9 +128,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPolygon, setCurrentPolygon] = useState<[number, number][]>([]);
-  const [drawingMode, setDrawingMode] = useState<'polygon' | 'rectangle' | null>(null);
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
+  // New state for square control
+  const [isSquareMode, setIsSquareMode] = useState(false);
+  const [squareBounds, setSquareBounds] = useState<[[number, number], [number, number]] | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
@@ -187,45 +146,25 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     }
   }, [initialCoordinates]);
 
-  const handleStartDrawing = (mode: 'polygon' | 'rectangle') => {
-    setIsDrawing(true);
-    setDrawingMode(mode);
+
+
+  // New function to handle square mode
+  const handleSquareMode = () => {
+    setIsSquareMode(!isSquareMode);
+    setIsDrawing(false);
     setCurrentPolygon([]);
     setShowStyleSelector(false);
   };
 
   const handleClearDrawing = () => {
     setIsDrawing(false);
-    setDrawingMode(null);
     setCurrentPolygon([]);
+    // Also clear square
+    setIsSquareMode(false);
+    setSquareBounds(null);
   };
 
-  const handleFinishDrawing = (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
 
-    if (currentPolygon.length < 3) {
-      alert('Please add at least 3 points to create a polygon');
-      return;
-    }
-
-    // Check area limit before completing
-    const area = calculatePolygonArea(currentPolygon);
-    if (area > MAX_AREA_HECTARES) {
-      alert(`Area too large! Maximum allowed: ${MAX_AREA_HECTARES.toLocaleString()} hectares (${area.toLocaleString()} hectares selected)`);
-      handleClearDrawing();
-      return;
-    }
-
-    setIsDrawing(false);
-    setDrawingMode(null);
-    const coordinates = currentPolygon.map(point => [point[1], point[0]]); // Convert to [lng, lat]
-    if (onPolygonComplete) {
-      onPolygonComplete(coordinates, area);
-    }
-  };
 
   const handleZoomIn = () => {
     if (mapRef.current) {
@@ -284,6 +223,28 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     Number(import.meta.env.VITE_MAP_DEFAULT_CENTER_LNG) || 77.2090
   ];
 
+  // Function to get square coordinates for debugger
+  const getSquareCoordinates = (): number[][] => {
+    if (!squareBounds) return [];
+    
+    const [[south, west], [north, east]] = squareBounds;
+    // Return coordinates in [lng, lat] format as polygon
+    return [
+      [west, south], // bottom-left
+      [east, south], // bottom-right
+      [east, north], // top-right
+      [west, north], // top-left
+      [west, south]  // close polygon
+    ];
+  };
+
+  // Function to handle square completion
+  const handleSquareComplete = useCallback((coords: number[][], area: number) => {
+    if (onPolygonComplete) {
+      onPolygonComplete(coords, area);
+    }
+  }, [onPolygonComplete]);
+
   return (
     <div className={`relative ${className}`} style={{ zIndex: 1 }}>
       {/* Map Container */}
@@ -312,33 +273,25 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             setIsDrawing={setIsDrawing}
             currentPolygon={currentPolygon}
             setCurrentPolygon={setCurrentPolygon}
-            drawingMode={drawingMode}
-            setDrawingMode={setDrawingMode}
+            // New props for square control
+            isSquareMode={isSquareMode}
+            setIsSquareMode={setIsSquareMode}
+            squareBounds={squareBounds}
+            setSquareBounds={setSquareBounds}
+            onSquareComplete={handleSquareComplete}
           />
 
-          {/* Display current polygon */}
-          {currentPolygon.length > 1 && (
-            <Polygon
-              positions={currentPolygon}
+
+
+          {/* Display square */}
+          {squareBounds && (
+            <Rectangle
+              bounds={squareBounds}
               pathOptions={{
-                color: (() => {
-                  const area = calculatePolygonArea(currentPolygon);
-                  if (area > MAX_AREA_HECTARES) return '#ef4444'; // Red for over limit
-                  if (area > MAX_AREA_HECTARES * 0.8) return '#f59e0b'; // Orange for near limit
-                  return '#3b82f6'; // Blue for normal
-                })(),
+                color: '#3b82f6',
                 weight: 2,
-                fillOpacity: (() => {
-                  const area = calculatePolygonArea(currentPolygon);
-                  if (area > MAX_AREA_HECTARES) return 0.4; // More visible when over limit
-                  return 0.2;
-                })(),
-                fillColor: (() => {
-                  const area = calculatePolygonArea(currentPolygon);
-                  if (area > MAX_AREA_HECTARES) return '#ef4444';
-                  if (area > MAX_AREA_HECTARES * 0.8) return '#f59e0b';
-                  return '#3b82f6';
-                })()
+                fillOpacity: 0.2,
+                fillColor: '#3b82f6'
               }}
             />
           )}
@@ -348,106 +301,63 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       {/* Left Side Controls Panel */}
       <div className="absolute top-3 left-3 z-[1000] bg-white rounded-md shadow-lg border border-neutral-700">
         <div className="p-2 space-y-1.5">
-          {!isDrawing ? (
-            <>
-              {/* Drawing Tools */}
-              <button
-                type="button"
-                onClick={() => handleStartDrawing('polygon')}
-                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-                title="Draw Polygon"
-              >
-                <Pentagon className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartDrawing('rectangle')}
-                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-                title="Draw Rectangle"
-              >
-                <Square className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </button>
+          {/* Square Control Button */}
+          <button
+            type="button"
+            onClick={handleSquareMode}
+            className={`w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group ${isSquareMode ? 'bg-gray-200' : ''}`}
+            title="Add 10km² Square"
+          >
+            <Square className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
 
+          {/* Navigation Tools */}
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="Zoom In"
+          >
+            <ZoomIn className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="Zoom Out"
+          >
+            <ZoomOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={handleResetView}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="Reset View"
+          >
+            <RotateCcw className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={handleLocateMe}
+            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
+            title="My Location"
+          >
+            <LocateFixed className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
 
-              {/* Navigation Tools */}
-              <button
-                type="button"
-                onClick={handleZoomIn}
-                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-                title="Zoom In"
-              >
-                <ZoomIn className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                type="button"
-                onClick={handleZoomOut}
-                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-                title="Zoom Out"
-              >
-                <ZoomOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                type="button"
-                onClick={handleResetView}
-                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-                title="Reset View"
-              >
-                <RotateCcw className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                type="button"
-                onClick={handleLocateMe}
-                className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-                title="My Location"
-              >
-                <LocateFixed className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </button>
-
-              {/* Map Style Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowStyleSelector(!showStyleSelector)}
-                className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
-                  showStyleSelector 
-                    ? 'bg-gray-100 text-black' 
-                    : 'bg-white text-black hover:bg-gray-100'
-                }`}
-                title="Map Style"
-              >
-                <Layers className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Drawing Status */}
-              <div className="text-xs text-gray-700 text-center py-1 px-2 bg-gray-200 rounded-sm">
-                {drawingMode} ({currentPolygon.length})
-              </div>
-
-              {/* Drawing Actions */}
-              {drawingMode === 'polygon' && (
-                <button
-                  type="button"
-                  onClick={handleFinishDrawing}
-                  disabled={currentPolygon.length < 3}
-                  className="w-full px-2 py-1.5 bg-emerald-600 text-white rounded-sm hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1 transition-all duration-200 text-xs font-medium"
-                  title="Finish Drawing"
-                >
-                  <Check className="h-3 w-3" />
-                  <span>Finish</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleClearDrawing}
-                className="w-full px-2 py-1.5 bg-red-600 text-white rounded-sm hover:bg-red-500 flex items-center justify-center space-x-1 transition-all duration-200 text-xs font-medium"
-                title="Clear Drawing"
-              >
-                <Trash2 className="h-3 w-3" />
-                <span>Clear</span>
-              </button>
-            </>
-          )}
+          {/* Map Style Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowStyleSelector(!showStyleSelector)}
+            className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
+              showStyleSelector 
+                ? 'bg-gray-100 text-black' 
+                : 'bg-white text-black hover:bg-gray-100'
+            }`}
+            title="Map Style"
+          >
+            <Layers className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
         </div>
 
         {/* Map Style Selector */}
@@ -491,63 +401,28 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       </div>
 
       {/* Status Display */}
-      {currentPolygon.length > 0 && (
+      {squareBounds && (
         <div className="absolute bottom-3 right-3 bg-white text-black px-3 py-2 rounded-md shadow-lg border border-neutral-700 text-sm z-[1000]">
-          <div className="font-medium text-black">Points: {currentPolygon.length}</div>
-          {currentPolygon.length > 2 && (() => {
-            const area = calculatePolygonArea(currentPolygon);
-            const isOverLimit = area > MAX_AREA_HECTARES;
-            const isNearLimit = area > MAX_AREA_HECTARES * 0.8;
-            
-            return (
-              <>
-                <div className={`font-medium ${
-                  isOverLimit ? 'text-red-400' : isNearLimit ? 'text-orange-400' : 'text-emerald-400'
-                }`}>
-                  Area: {formatHectares(area)} ha
-                </div>
-                {isOverLimit && (
-                  <div className="text-red-400 text-xs mt-1 font-medium">
-                    ⚠️ Exceeds limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
-                  </div>
-                )}
-                {isNearLimit && !isOverLimit && (
-                  <div className="text-orange-400 text-xs mt-1">
-                    ⚠️ Approaching limit ({MAX_AREA_HECTARES.toLocaleString()} ha max)
-                  </div>
-                )}
-              </>
-            );
-          })()}
+          <>
+            <div className="font-medium text-black">10km² Square</div>
+            <div className="font-medium text-emerald-400">
+              Area: 1000.0 ha
+            </div>
+          </>
         </div>
       )}
 
       {/* Instructions */}
-      {isDrawing && (
+      {isSquareMode && (
         <div className="absolute top-3 right-3 bg-white text-black px-4 py-3 rounded-md max-w-xs z-[1000] shadow-lg border border-neutral-700">
           <div className="font-medium mb-2 flex items-center text-black">
-            {drawingMode === 'polygon' ? (
-              <Pentagon className="h-4 w-4 mr-2 text-emerald-400" />
-            ) : (
-              <Square className="h-4 w-4 mr-2 text-emerald-400" />
-            )}
-            Drawing {drawingMode}
+            <Square className="h-4 w-4 mr-2 text-emerald-400" />
+            Square Placement Mode
           </div>
           <div className="text-xs leading-relaxed text-black">
-            {drawingMode === 'polygon' ? (
-              <>
-                • Click to add points<br />
-                • Need at least 3 points<br />
-                • Double-click to finish<br />
-                • Or use "Finish" button
-              </>
-            ) : (
-              <>
-                • Click first corner<br />
-                • Click opposite corner<br />
-                • Rectangle created automatically
-              </>
-            )}
+            • Click anywhere on the map<br />
+            • A 10km² square will be placed<br />
+            • Square can be repositioned by enabling this mode again
           </div>
         </div>
       )}
