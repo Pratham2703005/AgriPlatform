@@ -77,6 +77,7 @@ const register = async (req, res) => {
 // Login Controller on the Basis of E-Mail and Password
 
 const login = async (req, res) => {
+  console.log("REQUEST FOR LOGIN CAMED")
   const req_body = req.body;
   if (!req_body.email) {
     const response = new ResponseEntity(0, "Enter the E-mail", {});

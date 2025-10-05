@@ -3,6 +3,10 @@ const ResponseEntity = require("../utils/ResponseEntity.js");
 const path = require("path");
 const { prepareData } = require("../utils/prepareData");
 const { centroidFromRing } = require("../utils/geometry");
+const { getDistrictFromCoordinates } = require("../utils/reverseGeocode");
+const { getDistrictYield } = require("../utils/districtYield");
+const { getNDVIData, getSensorData } = require("../utils/geeData");
+const { predictYield } = require("../utils/yieldPrediction");
 
 
 // Get all farms in the system (admin only)
@@ -167,6 +171,28 @@ const createFarm = async (req, res) => {
 
     const centroid = centroidFromRing(closedCoordinates);
     console.log("CENTROID: ", centroid);
+    
+    // Get district name from coordinates
+    const [lon, lat] = centroid;
+    const districtName = await getDistrictFromCoordinates(lat, lon);
+    console.log("DISTRICT NAME: ", districtName);
+    
+    // Get historical yield for the district
+    const historicalYield = await getDistrictYield(districtName);
+    console.log("HISTORICAL YIELD: ", historicalYield);
+    
+    // Get NDVI and sensor data from Google Earth Engine
+    const ndviData = await getNDVIData(closedCoordinates);
+    const sensorData = await getSensorData(closedCoordinates);
+    console.log("GEE DATA RETRIEVED");
+    
+    // Predict yield using ML model (dummy implementation for now)
+    const predictedYield = await predictYield(
+      ndviData ? [0.5, 0.6, 0.7] : null, // Dummy data for now
+      sensorData ? [0.4, 0.5, 0.6] : null // Dummy data for now
+    );
+    console.log("PREDICTED YIELD: ", predictedYield);
+
     const farmData = {
       name: name.trim(),
       crop: crop.trim(),
@@ -177,59 +203,18 @@ const createFarm = async (req, res) => {
       userId,
       coordinates: geoJsonCoordinates, // Use the GeoJSON format
     };
-
-    const defaults = {
-      satelliteConfig: {
-        cloudThreshold: 50,
-        dateRangeMonths: 5,
-        scale: 10,
-        bands: ["B2", "B3", "B4", "B5", "B8", "B11"],
-        bandNames: ["Blue_B2", "Green_B3", "Red_B4", "RedEdge_B5", "NIR_B8", "SWIR_B11"],
-      },
-      sensorConfig: {
-        scale: 1000,
-        assets: {
-          ECe: "projects/pk07007/assets/ECe",
-          N: "projects/pk07007/assets/N",
-          P: "projects/pk07007/assets/P",
-          OC: "projects/pk07007/assets/OC",
-          pH: "projects/pk07007/assets/pH",
-        },
-      },
-      weatherConfig: {
-        forecastDays: 3,
-        fields: [
-          "temperature",
-          "humidity",
-          "pressure",
-          "windSpeed",
-          "windDirection",
-          "precipitation",
-          "cloudCover",
-        ],
-      },
-    };
-
-    let dataPrep = null;
-    try {
-      dataPrep = await prepareData({
-        areaName: name.trim(),
-        polygon: closedCoordinates,
-        center: centroid,
-        satelliteConfig: defaults.satelliteConfig,
-        sensorConfig: defaults.sensorConfig,
-        weatherConfig: defaults.weatherConfig,
-        tempDir: path.join(__dirname, "..", "temp"),
-      });
-    } catch (e) {
-      dataPrep = { error: e.message };
-    }
-
     const farm = await Farm.create(farmData);
 
     const response = new ResponseEntity(1, "Farm created successfully", {
       farm,
-      dataPrep,
+      geospatialAnalysis: {
+        centroid,
+        districtName,
+        historicalYield,
+        predictedYield,
+        ndviDataAvailable: !!ndviData,
+        sensorDataAvailable: !!sensorData
+      }
     });
     res.status(201).json(response);
   } catch (error) {
@@ -275,6 +260,7 @@ const updateFarm = async (req, res) => {
     }
 
     // Handle coordinates
+    let centroid = null;
     if (updateData.coordinates) {
       const coords = updateData.coordinates.coordinates;
 
@@ -296,6 +282,39 @@ const updateFarm = async (req, res) => {
         type: "Polygon",
         coordinates: [closedCoordinates],
       };
+      
+      // Calculate centroid for geospatial analysis
+      centroid = centroidFromRing(closedCoordinates);
+    }
+
+    // Perform geospatial analysis if coordinates were updated
+    let geospatialAnalysis = null;
+    if (centroid) {
+      // Get district name from coordinates
+      const [lon, lat] = centroid;
+      const districtName = await getDistrictFromCoordinates(lat, lon);
+      
+      // Get historical yield for the district
+      const historicalYield = await getDistrictYield(districtName);
+      
+      // Get NDVI and sensor data from Google Earth Engine
+      const ndviData = await getNDVIData(updateData.coordinates.coordinates[0]);
+      const sensorData = await getSensorData(updateData.coordinates.coordinates[0]);
+      
+      // Predict yield using ML model (dummy implementation for now)
+      const predictedYield = await predictYield(
+        ndviData ? [0.5, 0.6, 0.7] : null, // Dummy data for now
+        sensorData ? [0.4, 0.5, 0.6] : null // Dummy data for now
+      );
+      
+      geospatialAnalysis = {
+        centroid,
+        districtName,
+        historicalYield,
+        predictedYield,
+        ndviDataAvailable: !!ndviData,
+        sensorDataAvailable: !!sensorData
+      };
     }
 
     // Update farm
@@ -304,9 +323,18 @@ const updateFarm = async (req, res) => {
       runValidators: true,
     });
 
+    const responseData = {
+      farm: updatedFarm
+    };
+    
+    // Include geospatial analysis if it was performed
+    if (geospatialAnalysis) {
+      responseData.geospatialAnalysis = geospatialAnalysis;
+    }
+
     return res
       .status(200)
-      .json(new ResponseEntity(1, "Farm updated successfully", updatedFarm));
+      .json(new ResponseEntity(1, "Farm updated successfully", responseData));
   } catch (error) {
     console.error("Error updating farm:", error);
 

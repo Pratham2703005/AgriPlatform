@@ -16,7 +16,7 @@ const corsOptions = {
   credentials: true,
   origin: process.env.NODE_ENV === 'production' 
     ? [process.env.FRONTEND_URL, 'https://agrixplatform.vercel.app'] 
-    : ["http://localhost:3000", "http://localhost:5173", "http://localhost:4173"]
+    : ["http://localhost:3000"]
 };
 
 app.use(cors(corsOptions));
