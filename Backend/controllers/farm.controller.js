@@ -1,7 +1,6 @@
 const Farm = require("../models/farm.model.js");
 const ResponseEntity = require("../utils/ResponseEntity.js");
 const path = require("path");
-const { prepareData } = require("../utils/prepareData");
 const { centroidFromRing } = require("../utils/geometry");
 const { getDistrictFromCoordinates } = require("../utils/reverseGeocode");
 const { getDistrictYield } = require("../utils/districtYield");
