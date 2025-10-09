@@ -2,8 +2,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
-import { FarmMapView } from '../components/map/FarmMapView';
-import { ArrowLeft, MapPin, Calendar, Sprout, Edit, Trash2, Download, FileText, Map, Lock } from 'lucide-react';
+import { useHeatmap } from '../hooks/useHeatmap';
+import { HeatmapOverlay } from '../components/map/HeatmapOverlay';
+import { ArrowLeft, Sprout, Edit, Trash2, Download, FileText, Map, Lock, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
 import { useEffect } from 'react';
 import { formatHectares } from '@/utils';
 import type { Farm } from '@/types/farm';
@@ -13,16 +14,29 @@ export default function FarmDetail() {
   const navigate = useNavigate();
   const { user, isGuestMode } = useAuth();
   const { getFarmById, deleteFarm, loading, farms } = useFarms();
+  const { heatmapData, loading: heatmapLoading, error: heatmapError, fetchHeatmapData } = useHeatmap();
   const [farm, setFarm] = React.useState<Farm | null>(null);
-
+  const [hasInitiallyFetchedHeatmap, setHasInitiallyFetchedHeatmap] = React.useState(false);
 
   // Set farm when farms are loaded
   useEffect(() => {
     if (!loading && id && farms.length > 0) {
-  const foundFarm = getFarmById(id);
-  setFarm(foundFarm ?? null);
+      const foundFarm = getFarmById(id);
+      setFarm(foundFarm ?? null);
     }
   }, [loading, id, getFarmById, farms]);
+
+  // Fetch heatmap data when farm is loaded (only once)
+  useEffect(() => {
+    if (farm && farm.coordinates && farm.coordinates.length > 0 && !hasInitiallyFetchedHeatmap && !heatmapData) {
+      // Convert coordinates to the format expected by the API
+      const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
+      if (coordinates.length > 0) {
+        fetchHeatmapData(coordinates, 0.5, 0.75);
+        setHasInitiallyFetchedHeatmap(true);
+      }
+    }
+  }, [farm, fetchHeatmapData, hasInitiallyFetchedHeatmap, heatmapData]);
 
   // Show loader if loading or farms not loaded
   if (loading || !id || farms.length === 0) {
@@ -207,167 +221,309 @@ export default function FarmDetail() {
       </header>
 
       {/* Enhanced Main Content */}
-      <main className="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Enhanced Farm Information */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="card-elevated animate-in">
-                <div className="p-6">
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="h-10 w-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-neutral-900">Farm Information</h3>
-                      <p className="text-sm text-neutral-600">Detailed farm specifications</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gradient-to-r from-neutral-50 to-neutral-100 rounded-xl p-4">
-                      <dt className="text-sm font-medium text-neutral-700 mb-2">Farm Name</dt>
-                      <dd className="text-lg font-semibold text-neutral-900">{farm?.name}</dd>
-                    </div>
-                    
-                    <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-4">
-                      <dt className="text-sm font-medium text-neutral-700 mb-2">Crop Type</dt>
-                      <dd className="flex items-center">
-                        <div className="badge-success">
-                          <Sprout className="h-4 w-4 mr-1" />
-                          {farm?.crop}
-                        </div>
-                      </dd>
-                    </div>
-                    
-                    <div className="bg-gradient-to-r from-secondary-50 to-secondary-100 rounded-xl p-4">
-                      <dt className="text-sm font-medium text-neutral-700 mb-2">Total Area</dt>
-                      <dd className="flex items-center text-2xl font-bold text-secondary-700">
-                        {formatHectares(farm?.area)} <span className="text-lg text-neutral-600 ml-1">hectares</span>
-                      </dd>
-                    </div>
-                    
-                    <div className="bg-gradient-to-r from-accent-50 to-accent-100 rounded-xl p-4">
-                      <dt className="text-sm font-medium text-neutral-700 mb-2">Boundary Points</dt>
-                      <dd className="flex items-center text-accent-700 font-semibold">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {farm?.coordinates.length} mapped points
-                      </dd>
-                    </div>
-                    
-                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4">
-                      <dt className="text-sm font-medium text-neutral-700 mb-2">Planting Date</dt>
-                      <dd className="flex items-center text-blue-700 font-semibold">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {new Date(farm?.plantingDate || 0).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </dd>
-                    </div>
-                    
-                    <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4">
-                      <dt className="text-sm font-medium text-neutral-700 mb-2">Expected Harvest</dt>
-                      <dd className="flex items-center text-green-700 font-semibold">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {new Date(farm?.harvestDate || 0).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </dd>
-                    </div>
-                  </div>
-                  
-                  {farm?.description && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-xl border-l-4 border-l-primary-500">
-                      <dt className="text-sm font-medium text-neutral-700 mb-3">Farm Description</dt>
-                      <dd className="text-neutral-900 leading-relaxed">{farm.description}</dd>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Enhanced Farm Map View */}
-              <div className="card-elevated animate-in stagger-1">
-                <div className="p-6">
-                  <div className="flex items-center space-x-3 mb-6">
+          {/* Full Width Map Section */}
+          <div className="mb-8">
+            <div className="card-elevated animate-in">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
                     <div className="h-10 w-10 bg-gradient-to-br from-accent-500 to-accent-700 rounded-xl flex items-center justify-center">
                       <Map className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-neutral-900">Farm Location & Boundary</h3>
-                      <p className="text-sm text-neutral-600">Interactive satellite view with boundary mapping</p>
+                      <h3 className="text-xl font-semibold text-neutral-900">Interactive Farm Analysis</h3>
+                      <p className="text-sm text-neutral-600">Satellite view with AI-powered crop health overlay</p>
                     </div>
                   </div>
-                  <div className="rounded-xl overflow-hidden border border-neutral-200 shadow-soft">
-                    <FarmMapView
-                      coordinates={farm?.coordinates || [[]]}
-                      farmName={farm?.name || ''}
-                      height="400px"
-                      className="w-full"
-                    />
-                  </div>
+                  {heatmapData && (
+                    <div className="flex items-center space-x-2 text-sm text-neutral-600">
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <span>Stressed</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <span>Moderate</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span>Healthy</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              {/* Enhanced Coordinates Information */}
-              <div className="card-elevated animate-in stagger-2">
-                <div className="p-6">
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="h-10 w-10 bg-gradient-to-br from-secondary-500 to-secondary-700 rounded-xl flex items-center justify-center">
-                      <MapPin className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-neutral-900">Boundary Coordinates</h3>
-                      <p className="text-sm text-neutral-600">{farm?.coordinates.length} GPS coordinate points</p>
-                    </div>
-                  </div>
-                  <div className="bg-neutral-50 rounded-xl p-4">
-                    <div className="max-h-60 overflow-y-auto">
-                      <table className="min-w-full">
-                        <thead>
-                          <tr className="border-b border-neutral-200">
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                              Point
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                              Longitude
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                              Latitude
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-200">
-                          {Array.isArray(farm?.coordinates) &&
-                            (farm.coordinates as number[][]).map((coord: number[], index: number) => (
-                              Array.isArray(coord) ? (
-                                <tr key={index} className="hover:bg-neutral-100 transition-colors">
-                                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">
-                                    #{index + 1}
-                                  </td>
-                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-700 font-mono">
-                                    {typeof coord[0] === 'number' ? coord[0].toFixed(6) : ''}
-                                  </td>
-                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-700 font-mono">
-                                    {typeof coord[1] === 'number' ? coord[1].toFixed(6) : ''}
-                                  </td>
-                                </tr>
-                              ) : null
-                            ))
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                <div className="rounded-xl overflow-hidden border border-neutral-200 shadow-soft">
+                  <HeatmapOverlay
+                    coordinates={farm?.coordinates || [[]]}
+                    heatmapData={heatmapData}
+                    height="600px"
+                    className="w-full"
+                  />
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Two Column Layout for Details and Analysis */}
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+            {/* Main Content - Farm Analysis */}
+            <div className="xl:col-span-3 space-y-6">
+              {/* AI Analysis Section */}
+              {heatmapData && (
+                <div className="card-elevated animate-in stagger-1">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center">
+                          <Activity className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-neutral-900">AI Field Analysis</h3>
+                          <p className="text-sm text-neutral-600">Satellite-based crop health assessment</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (farm && farm.coordinates && farm.coordinates.length > 0) {
+                            const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
+                            if (coordinates.length > 0) {
+                              fetchHeatmapData(coordinates, 0.5, 0.75);
+                            }
+                          }
+                        }}
+                        disabled={heatmapLoading}
+                        className="btn-secondary text-sm"
+                      >
+                        <Activity className="h-4 w-4 mr-2" />
+                        {heatmapLoading ? 'Analyzing...' : 'Refresh Analysis'}
+                      </button>
+                    </div>
+                    
+                    {/* Overall Assessment */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6">
+                      <h4 className="font-semibold text-blue-900 mb-2">Overall Assessment</h4>
+                      <p className="text-blue-800">{heatmapData.suggestions.overall_assessment}</p>
+                    </div>
+
+                    {/* Yield Analysis */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="bg-white rounded-xl p-4 border border-neutral-200">
+                        <h4 className="font-semibold text-neutral-900 mb-3 flex items-center">
+                          <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
+                          Yield Prediction
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-neutral-600">Predicted:</span>
+                            <span className="font-semibold text-green-700">{heatmapData.predicted_yield.toFixed(2)} tons</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-neutral-600">Previous:</span>
+                            <span className="font-semibold text-neutral-700">{heatmapData.old_yield.toFixed(2)} tons</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <span className="text-sm text-neutral-600">Change:</span>
+                            <span className={`font-semibold flex items-center ${heatmapData.growth.percentage >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                              {heatmapData.growth.percentage >= 0 ? (
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                              ) : (
+                                <TrendingDown className="h-3 w-3 mr-1" />
+                              )}
+                              {heatmapData.growth.percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl p-4 border border-neutral-200">
+                        <h4 className="font-semibold text-neutral-900 mb-3">Field Health Distribution</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm flex items-center">
+                              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                              Healthy
+                            </span>
+                            <span className="font-semibold text-green-700">
+                              {((heatmapData.pixel_counts.green / heatmapData.pixel_counts.valid) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm flex items-center">
+                              <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                              Moderate
+                            </span>
+                            <span className="font-semibold text-yellow-700">
+                              {((heatmapData.pixel_counts.yellow / heatmapData.pixel_counts.valid) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm flex items-center">
+                              <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                              Stressed
+                            </span>
+                            <span className="font-semibold text-red-700">
+                              {((heatmapData.pixel_counts.red / heatmapData.pixel_counts.valid) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Heatmap Masks */}
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-neutral-900 mb-4">Field Health Visualization</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center">
+                          <h5 className="text-sm font-medium text-red-700 mb-2">Stressed Areas</h5>
+                          <img 
+                            src={`data:image/png;base64,${heatmapData.masks.red_mask_base64}`}
+                            alt="Red mask - stressed areas"
+                            className="w-full h-32 object-cover rounded-lg border"
+                          />
+                        </div>
+                        <div className="text-center">
+                          <h5 className="text-sm font-medium text-yellow-700 mb-2">Moderate Health</h5>
+                          <img 
+                            src={`data:image/png;base64,${heatmapData.masks.yellow_mask_base64}`}
+                            alt="Yellow mask - moderate areas"
+                            className="w-full h-32 object-cover rounded-lg border"
+                          />
+                        </div>
+                        <div className="text-center">
+                          <h5 className="text-sm font-medium text-green-700 mb-2">Healthy Areas</h5>
+                          <img 
+                            src={`data:image/png;base64,${heatmapData.masks.green_mask_base64}`}
+                            alt="Green mask - healthy areas"
+                            className="w-full h-32 object-cover rounded-lg border"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recommendations */}
+                    <div className="space-y-4">
+                      {heatmapData.suggestions.field_management.length > 0 && (
+                        <div className="bg-green-50 rounded-xl p-4">
+                          <h4 className="font-semibold text-green-900 mb-2 flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Field Management
+                          </h4>
+                          <ul className="text-sm text-green-800 space-y-1">
+                            {heatmapData.suggestions.field_management.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {heatmapData.suggestions.soil_recommendations.length > 0 && (
+                        <div className="bg-amber-50 rounded-xl p-4">
+                          <h4 className="font-semibold text-amber-900 mb-2 flex items-center">
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Soil Recommendations
+                          </h4>
+                          <ul className="text-sm text-amber-800 space-y-1">
+                            {heatmapData.suggestions.soil_recommendations.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {heatmapData.suggestions.immediate_actions.length > 0 && (
+                        <div className="bg-blue-50 rounded-xl p-4">
+                          <h4 className="font-semibold text-blue-900 mb-2">Immediate Actions</h4>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            {heatmapData.suggestions.immediate_actions.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {heatmapData.suggestions.seasonal_planning.length > 0 && (
+                        <div className="bg-purple-50 rounded-xl p-4">
+                          <h4 className="font-semibold text-purple-900 mb-2">Seasonal Planning</h4>
+                          <ul className="text-sm text-purple-800 space-y-1">
+                            {heatmapData.suggestions.seasonal_planning.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {heatmapLoading && (
+                <div className="card-elevated animate-in stagger-1">
+                  <div className="p-6 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+                    <p className="text-neutral-600">Analyzing field data...</p>
+                  </div>
+                </div>
+              )}
+
+              {heatmapError && (
+                <div className="card-elevated animate-in stagger-1">
+                  <div className="p-6 text-center">
+                    <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+                    <p className="text-red-600 mb-4">Failed to load field analysis: {heatmapError}</p>
+                    <button
+                      onClick={() => {
+                        if (farm && farm.coordinates && farm.coordinates.length > 0) {
+                          const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
+                          if (coordinates.length > 0) {
+                            fetchHeatmapData(coordinates, 0.5, 0.75);
+                          }
+                        }
+                      }}
+                      className="btn-primary"
+                    >
+                      <Activity className="h-4 w-4 mr-2" />
+                      Retry Analysis
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!heatmapData && !heatmapLoading && !heatmapError && (
+                <div className="card-elevated animate-in stagger-1">
+                  <div className="p-6 text-center">
+                    <div className="h-16 w-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Activity className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-neutral-900 mb-2">AI Field Analysis</h3>
+                    <p className="text-neutral-600 mb-6">Get detailed insights about your crop health using satellite imagery and AI analysis.</p>
+                    <button
+                      onClick={() => {
+                        if (farm && farm.coordinates && farm.coordinates.length > 0) {
+                          const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
+                          if (coordinates.length > 0) {
+                            fetchHeatmapData(coordinates, 0.5, 0.75);
+                          }
+                        }
+                      }}
+                      className="btn-primary"
+                    >
+                      <Activity className="h-4 w-4 mr-2" />
+                      Generate Analysis
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Enhanced Farm Map View */}
+              
+
+             
+            </div>
 
             {/* Enhanced Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="xl:col-span-2 space-y-6">
               {/* Enhanced Farm Status */}
               <div className="card-elevated animate-in stagger-3">
                 <div className="p-6">
@@ -445,6 +601,93 @@ export default function FarmDetail() {
                   </div>
                 </div>
               </div>
+
+              {/* Heatmap Statistics */}
+              {heatmapData && (
+                <div className="card-elevated animate-in stagger-3">
+                  <div className="p-6">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className="h-10 w-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center">
+                        <Activity className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-neutral-900">Field Health Overview</h3>
+                        <p className="text-sm text-neutral-600">AI-powered analysis results</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* Yield Comparison */}
+                      <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-4">
+                        <dt className="text-sm font-medium text-neutral-700 mb-2">Yield Prediction</dt>
+                        <dd className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-emerald-700">Current Estimate</span>
+                            <span className="font-bold text-emerald-800">{heatmapData.predicted_yield.toFixed(2)} tons</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-neutral-600">Previous Yield</span>
+                            <span className="font-semibold text-neutral-700">{heatmapData.old_yield.toFixed(2)} tons</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t border-emerald-200">
+                            <span className="text-sm text-neutral-600">Change</span>
+                            <span className={`font-bold flex items-center text-sm ${heatmapData.growth.percentage >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                              {heatmapData.growth.percentage >= 0 ? (
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                              ) : (
+                                <TrendingDown className="h-3 w-3 mr-1" />
+                              )}
+                              {heatmapData.growth.percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </dd>
+                      </div>
+
+                      {/* Health Distribution */}
+                      <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl p-4">
+                        <dt className="text-sm font-medium text-neutral-700 mb-3">Field Health Distribution</dt>
+                        <dd className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                              <span className="text-sm text-neutral-700">Healthy Areas</span>
+                            </div>
+                            <span className="font-semibold text-green-700">
+                              {((heatmapData.pixel_counts.green / heatmapData.pixel_counts.valid) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                              <span className="text-sm text-neutral-700">Moderate Health</span>
+                            </div>
+                            <span className="font-semibold text-yellow-700">
+                              {((heatmapData.pixel_counts.yellow / heatmapData.pixel_counts.valid) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                              <span className="text-sm text-neutral-700">Stressed Areas</span>
+                            </div>
+                            <span className="font-semibold text-red-700">
+                              {((heatmapData.pixel_counts.red / heatmapData.pixel_counts.valid) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        </dd>
+                      </div>
+
+                      {/* Overall Assessment */}
+                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4">
+                        <dt className="text-sm font-medium text-neutral-700 mb-2">Overall Assessment</dt>
+                        <dd className="text-sm text-blue-800 font-medium">
+                          {heatmapData.suggestions.overall_assessment}
+                        </dd>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Enhanced Quick Actions */}
               <div className="card-elevated animate-in stagger-4">

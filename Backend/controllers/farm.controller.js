@@ -1,7 +1,6 @@
 const Farm = require("../models/farm.model.js");
 const ResponseEntity = require("../utils/ResponseEntity.js");
-const path = require("path");
-const { prepareData } = require("../utils/prepareData");
+// const { prepareData } = require("../utils/prepareData");
 const { centroidFromRing } = require("../utils/geometry");
 const { getDistrictFromCoordinates } = require("../utils/reverseGeocode");
 const { getDistrictYield } = require("../utils/districtYield");
@@ -11,6 +10,7 @@ const { predictYield } = require("../utils/yieldPrediction");
 
 // Get all farms in the system (admin only)
 const getAllFarms = async (req, res) => {
+  console.log("GETFARMALL")
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -44,6 +44,7 @@ const getAllFarms = async (req, res) => {
 };
 // Get all farms for authenticated user
 const getFarms = async (req, res) => {
+  console.log("GETFARMs")
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
@@ -52,6 +53,8 @@ const getFarms = async (req, res) => {
     const farms = await Farm.findByUserId(userId, { page, limit });
     const total = await Farm.countDocuments({ userId });
     const totalPages = Math.ceil(total / limit);
+    
+    
     const response = new ResponseEntity(1, "Farms retrieved successfully", {
       farms,
       pagination: {
@@ -59,7 +62,7 @@ const getFarms = async (req, res) => {
         limit,
         total,
         totalPages,
-      },
+      }
     });
 
     res.status(200).json(response);
@@ -73,6 +76,7 @@ const getFarms = async (req, res) => {
 // Get single farm by ID
 const getFarm = async (req, res) => {
   try {
+    console.log("GETFARM")
     const farmId = req.params.id;
     const userId = req.user._id;
 
@@ -88,6 +92,8 @@ const getFarm = async (req, res) => {
       const response = new ResponseEntity(0, "Access denied", {});
       return res.status(403).json(response);
     }
+
+    
 
     const response = new ResponseEntity(1, "Farm retrieved successfully", farm);
     res.status(200).json(response);
@@ -169,29 +175,29 @@ const createFarm = async (req, res) => {
       coordinates: [closedCoordinates], // Wrap closed coordinates in an array for GeoJSON Polygon format
     };
 
-    const centroid = centroidFromRing(closedCoordinates);
-    console.log("CENTROID: ", centroid);
+    // const centroid = centroidFromRing(closedCoordinates);
+    // console.log("CENTROID: ", centroid);
     
-    // Get district name from coordinates
-    const [lon, lat] = centroid;
-    const districtName = await getDistrictFromCoordinates(lat, lon);
-    console.log("DISTRICT NAME: ", districtName);
+    // // Get district name from coordinates
+    // const [lon, lat] = centroid;
+    // const districtName = await getDistrictFromCoordinates(lat, lon);
+    // console.log("DISTRICT NAME: ", districtName);
     
-    // Get historical yield for the district
-    const historicalYield = await getDistrictYield(districtName);
-    console.log("HISTORICAL YIELD: ", historicalYield);
+    // // Get historical yield for the district
+    // const historicalYield = await getDistrictYield(districtName);
+    // console.log("HISTORICAL YIELD: ", historicalYield);
     
-    // Get NDVI and sensor data from Google Earth Engine
-    const ndviData = await getNDVIData(closedCoordinates);
-    const sensorData = await getSensorData(closedCoordinates);
-    console.log("GEE DATA RETRIEVED");
+    // // Get NDVI and sensor data from Google Earth Engine
+    // const ndviData = await getNDVIData(closedCoordinates);
+    // const sensorData = await getSensorData(closedCoordinates);
+    // console.log("GEE DATA RETRIEVED");
     
-    // Predict yield using ML model (dummy implementation for now)
-    const predictedYield = await predictYield(
-      ndviData ? [0.5, 0.6, 0.7] : null, // Dummy data for now
-      sensorData ? [0.4, 0.5, 0.6] : null // Dummy data for now
-    );
-    console.log("PREDICTED YIELD: ", predictedYield);
+    // // Predict yield using ML model (dummy implementation for now)
+    // const predictedYield = await predictYield(
+    //   ndviData ? [0.5, 0.6, 0.7] : null, // Dummy data for now
+    //   sensorData ? [0.4, 0.5, 0.6] : null // Dummy data for now
+    // );
+    // console.log("PREDICTED YIELD: ", predictedYield);
 
     const farmData = {
       name: name.trim(),
@@ -207,14 +213,14 @@ const createFarm = async (req, res) => {
 
     const response = new ResponseEntity(1, "Farm created successfully", {
       farm,
-      geospatialAnalysis: {
-        centroid,
-        districtName,
-        historicalYield,
-        predictedYield,
-        ndviDataAvailable: !!ndviData,
-        sensorDataAvailable: !!sensorData
-      }
+      // geospatialAnalysis: {
+      //   centroid,
+      //   districtName,
+      //   historicalYield,
+      //   predictedYield,
+      //   ndviDataAvailable: !!ndviData,
+      //   sensorDataAvailable: !!sensorData
+      // }
     });
     res.status(201).json(response);
   } catch (error) {

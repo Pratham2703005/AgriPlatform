@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const app = require("./app");
-const { initializeEE } = require("./utils/geeInit");
 
 dotenv.config();
 
@@ -13,7 +12,6 @@ async function startServer() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log("Connected to MongoDB");
     
-    await initializeEE();
     
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);

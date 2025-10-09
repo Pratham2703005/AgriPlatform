@@ -6,7 +6,7 @@ import { useFarms } from '../hooks/useFarms';
 import type { FarmFormData } from '../types/farm';
 import { CROP_OPTIONS } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
-import { ArrowLeft, Sprout, MapPin, Calendar, Plus, FileText, User, Activity, Map, Square, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, Sprout, MapPin, Calendar, Plus, FileText, User, Activity, Map } from 'lucide-react';
 import { formatHectares } from '@/utils';
 import cropData from '@/assets/p.json';
 
@@ -16,7 +16,6 @@ export const CreateFarm: React.FC = () => {
   const { addFarm, loading, error } = useFarms();
   const [coordinates, setCoordinates] = useState<number[][]>([]);
   const [area, setArea] = useState<number>(0);
-  const [showDebugger, setShowDebugger] = useState<boolean>(false);
 
   const {
     register,
@@ -104,10 +103,8 @@ export const CreateFarm: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Form */}
-          <div className="lg:col-span-2">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+          
             <div className="card-elevated animate-in">
               <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-8">
                 {/* Farm Details Section */}
@@ -360,53 +357,9 @@ export const CreateFarm: React.FC = () => {
                 </div>
               </form>
             </div>
-          </div>
+        
 
-          {/* Right Column - Debugger */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24">
-              <div className="card-elevated">
-                <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Square className="h-4 w-4 text-neutral-600" />
-                    <h3 className="font-semibold text-neutral-900">Coordinates</h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowDebugger(!showDebugger)}
-                    className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"
-                  >
-                    {showDebugger ? (
-                      <ChevronRight className="h-4 w-4 text-neutral-600" />
-                    ) : (
-                      <ChevronLeft className="h-4 w-4 text-neutral-600" />
-                    )}
-                  </button>
-                </div>
-                
-                {showDebugger && (
-                  <div className="p-4">
-                    <div className="bg-neutral-900 text-white p-4 rounded-lg overflow-auto max-h-[600px] font-mono text-xs">
-                      <pre className="whitespace-pre-wrap break-all">
-                        {JSON.stringify(coordinates, null, 2)}
-                      </pre>
-                    </div>
-                    <div className="mt-4 space-y-2 text-sm">
-                      <div className="flex justify-between items-center p-3 bg-neutral-50 rounded-lg">
-                        <span className="text-neutral-600">Points:</span>
-                        <span className="font-semibold text-neutral-900">{coordinates.length}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-neutral-50 rounded-lg">
-                        <span className="text-neutral-600">Area:</span>
-                        <span className="font-semibold text-neutral-900">{area.toFixed(1)} ha</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+         
       </div>
     </div>
   );
