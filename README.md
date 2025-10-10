@@ -1,11 +1,11 @@
-# 🌾 AgriPlatform - AI-Powered Crop Health Monitoring
+# 🌾 CropLab - AI-Powered Crop Health Prediction and Monitoring System
 
 <!-- Cover Image: Main project output showing satellite analysis -->
 ![Project Cover Image](./assets/output_1.png)
 
 ## 🚀 Overview
 
-AgriPlatform is an innovative agricultural technology solution that leverages satellite imagery, artificial intelligence, and machine learning to provide farmers with real-time crop health monitoring, yield predictions, and actionable farming insights. Our platform combines cutting-edge remote sensing technology with user-friendly interfaces to make precision agriculture accessible to farmers of all scales.
+CropLab is an innovative agricultural technology solution that leverages satellite imagery, artificial intelligence, and machine learning to provide farmers with real-time crop health monitoring, yield predictions, and actionable farming insights. Our platform combines cutting-edge remote sensing technology with user-friendly interfaces to make precision agriculture accessible to farmers of all scales.
 
 ## ✨ Features
 
@@ -291,8 +291,8 @@ flowchart LR
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Pratham2703005/AgriPlatform.git
-   cd agriplatform
+   git clone https://github.com/Pratham2703005/CropLab.git
+   cd CropLab
    ```
 
 2. **Install Frontend Dependencies**
@@ -351,7 +351,7 @@ flowchart LR
 
 ## 👥 Our Team
 
-Meet the dedicated team behind AgriPlatform - passionate developers, data scientists, and agricultural technology enthusiasts working together to revolutionize farming through AI and satellite technology.
+Meet the dedicated team behind CropLab - passionate developers, data scientists, and agricultural technology enthusiasts working together to revolutionize farming through AI and satellite technology.
 
 <div align="center">
 
