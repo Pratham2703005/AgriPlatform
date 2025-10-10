@@ -72,7 +72,7 @@ export default function RegisterPage() {
 
           <div className="mb-3">
             <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-              Join AgriPlatform
+              Join CropLab
             </h1>
             <p className="text-neutral-600">
               Create your account to start farming smarter

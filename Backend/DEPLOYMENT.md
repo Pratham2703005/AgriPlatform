@@ -58,7 +58,7 @@ Your backend has been prepared for Render deployment with the following changes:
 
 ### Step 4: Configure Service Settings
 ```
-Name: agriplatform-backend (or your preferred name)
+Name: CropLab-backend (or your preferred name)
 Environment: Node
 Region: Choose closest to your users (e.g., Oregon for US West)
 Branch: main
@@ -93,20 +93,20 @@ VITE_API_TIMEOUT=30000
    - Install dependencies
    - Start your server
 3. Wait for deployment (usually 2-5 minutes)
-4. You'll get a URL like: `https://agriplatform-backend.onrender.com`
+4. You'll get a URL like: `https://CropLab-backend.onrender.com`
 
 ### Step 7: Test Backend
-1. Visit your Render URL - should show: `{"message":"AgriPlatform Backend is running!","status":"healthy"}`
-2. Test API endpoint: `https://agriplatform.onrender.com/user` (should return route info)
+1. Visit your Render URL - should show: `{"message":"CropLab Backend is running!","status":"healthy"}`
+2. Test API endpoint: `https://CropLab.onrender.com/user` (should return route info)
 
 **✅ DEPLOYMENT SUCCESSFUL!** 
-Your backend is now live at: **https://agriplatform.onrender.com**
+Your backend is now live at: **https://CropLab.onrender.com**
 
 ### Step 8: Update Frontend
 1. Go to your Vercel dashboard
 2. Update environment variable:
    ```
-   VITE_API_BASE_URL=https://agriplatform.onrender.com
+   VITE_API_BASE_URL=https://CropLab.onrender.com
    ```
 3. Redeploy your frontend
 

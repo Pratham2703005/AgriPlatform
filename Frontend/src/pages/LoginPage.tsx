@@ -42,7 +42,7 @@ export default function LoginPage() {
             Welcome Back
           </h1>
           <p className="text-neutral-600">
-            Sign in to your AgriPlatform account
+            Sign in to your CropLab account
           </p>
         </div>
 

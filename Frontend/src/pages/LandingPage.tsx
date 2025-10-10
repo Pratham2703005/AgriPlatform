@@ -32,7 +32,7 @@ export function LandingPage() {
               <div className="bg-gradient-to-br from-primary-500 to-primary-700 p-2.5 rounded-xl shadow-glow">
                 <Sprout className="h-7 w-7 text-white" />
               </div>
-              <span className="text-2xl font-bold text-gradient">AgriPlatform</span>
+              <span className="text-2xl font-bold text-gradient">CropLab</span>
             </div>
             <div className="flex items-center space-x-3 animate-in stagger-1">
               <button

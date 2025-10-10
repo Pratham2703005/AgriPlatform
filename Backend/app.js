@@ -27,7 +27,7 @@ app.locals.ee = ee;
 
 // Health check endpoint
 app.get('/', (req, res) => {
-  res.json({ message: 'AgriPlatform Backend is running!', status: 'healthy' });
+  res.json({ message: 'CropLab Backend is running!', status: 'healthy' });
 });
 
 // Routes

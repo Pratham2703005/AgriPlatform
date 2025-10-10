@@ -173,7 +173,7 @@ export default function UserDashboard() {
               <div className="px-6 py-8 text-white">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold mb-2">Welcome to AgriPlatform!</h2>
+                    <h2 className="text-2xl font-bold mb-2">Welcome to CropLab!</h2>
                     <p className="text-blue-100 mb-4 max-w-2xl">
                       You're in Guest Mode - try out all features without signing up! 
                       Your data is saved locally in your browser. When ready, sign up to sync your farms to the cloud and unlock notifications.
@@ -248,7 +248,7 @@ export default function UserDashboard() {
             <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
               <div className="px-4 py-5 sm:p-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Welcome to AgriPlatform
+                  Welcome to CropLab
                 </h3>
                 <div className="mt-2 max-w-xl text-sm text-gray-500">
                   <p>

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: agriplatform-backend
+    name: CropLab-backend
     env: node
     plan: free
     buildCommand: npm ci

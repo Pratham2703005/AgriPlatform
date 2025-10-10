@@ -24,8 +24,8 @@ export function calculatePolygonArea(coordinates: number[][]): number {
 }
 import type { Farm, FarmFormData } from '../types/farm';
 
-const GUEST_FARMS_KEY = 'agriplatform_guest_farms';
-const GUEST_COUNTER_KEY = 'agriplatform_guest_counter';
+const GUEST_FARMS_KEY = 'CropLab_guest_farms';
+const GUEST_COUNTER_KEY = 'CropLab_guest_counter';
 
 // GuestFarm type for localStorage
 export type GuestFarm = Omit<Farm, 'userId'> & {

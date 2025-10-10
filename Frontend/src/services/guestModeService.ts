@@ -15,7 +15,7 @@ export class GuestModeService {
     return {
       id: 'guest',
       fullName: 'Guest User',
-      email: 'guest@agriplatform.com',
+      email: 'guest@CropLab.com',
       phone: '',
       address: '',
       role: 'user',
@@ -214,7 +214,7 @@ export class GuestModeService {
     console.log('🔍 hasGuestFarmsToMigrate check:', { hasGuestFarms, guestFarmCount });
     
     // Also check localStorage directly for debugging
-    const rawData = localStorage.getItem('agriplatform_guest_farms');
+    const rawData = localStorage.getItem('CropLab_guest_farms');
     console.log('🔍 localStorage guest_farms:', rawData);
     
     return hasGuestFarms;
