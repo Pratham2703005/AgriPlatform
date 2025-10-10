@@ -73,6 +73,78 @@ The analysis includes:
 
 ![Farm Detail Dashboard](./assets/output_3.png)
 
+### 📊 API Response Structure
+
+Our `generate_heatmap` API returns comprehensive analysis data in the following JSON format:
+
+```json
+{
+  "predicted_yield": 4.314789772033691,
+  "old_yield": 4.75,
+  "growth": {
+    "ratio": 0.9083767941123561,
+    "percentage": -9.162320588764391
+  },
+  "location": {
+    "district": "moga",
+    "coordinates": {
+      "latitude": 30.686323800000004,
+      "longitude": 74.95473419999999
+    },
+    "complete_address": "Bagha Purana Tahsil, Moga, Punjab, India"
+  },
+  "ndvi_shape": [315, 316],
+  "sensor_shape": [315, 316, 5],
+  "masks": {
+    "red_mask_base64": "mask in base64",
+    "yellow_mask_base64": "mask in base64",
+    "green_mask_base64": "mask in base64"
+  },
+  "pixel_counts": {
+    "valid": 99540,
+    "red": 2785,
+    "yellow": 15194,
+    "green": 81561
+  },
+  "thresholds": {
+    "t1": 0.5,
+    "t2": 0.75
+  },
+  "suggestions": {
+    "overall_assessment": "⚠️ Average. Some areas need improvement.",
+    "yield_analysis": {
+      "predicted_yield": 4.31,
+      "previous_yield": 4.75,
+      "yield_change": -0.44,
+      "yield_change_percent": -9.2,
+      "status": "Lower"
+    },
+    "field_management": [
+      "🟢 Great! Most of your field looks healthy.",
+      "Keep following your current farming practices."
+    ],
+    "soil_recommendations": [
+      "🧪 Soil is alkaline — use gypsum or organic manure.",
+      "🧂 High soil salinity — improve drainage and apply gypsum."
+    ],
+    "immediate_actions": [
+      "✅ No urgent action required — continue regular monitoring."
+    ],
+    "seasonal_planning": [
+      "🌾 Punjab: Plan better wheat-rice rotation.",
+      "💧 Prepare for water management before monsoon.",
+      "📅 Maintain yield records.",
+      "🌱 Try intercropping to improve productivity."
+    ],
+    "risk_alerts": [
+      "✅ No major problems detected — field is in good condition."
+    ]
+  }
+}
+```
+
+For detailed technical implementation and ML model analysis, see our [Deep Dive Technical Documentation](./GENERATE_HEATMAP.md).
+
 ## 🔄 Technology Flow
 
 ### System Architecture Flowchart
@@ -277,6 +349,36 @@ flowchart LR
 - `alert_generated` - Immediate alert notifications
 - `monitoring_update` - Scheduled monitoring results
 
+## 👥 Our Team
+
+Meet the dedicated team behind AgriPlatform - passionate developers, data scientists, and agricultural technology enthusiasts working together to revolutionize farming through AI and satellite technology.
+
+<div align="center">
+
+### 🚀 Core Development Team
+
+| Name | Role | LinkedIn |
+|------|------|----------|
+| **Madhav Chaturvedi(Cap)** | Full Stack Dev | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/madhavxchaturvedi/) |
+| **Nauman Hussain** | Backend Dev | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/nauman-hussain-a89297262/) |
+| **Shikher Jain** | AI/ML Engineer | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/shikher-jain-0bb8a8259) |
+| **Aleena Khan** | Frontend Dev | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/aleenakhan-/) |
+| **Sheeba Salim** | AI/ML Engineer | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sheeba-salim-aa59051a5/) |
+| **Aqsa Musqir** | AI/ML Engineer | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://linkedin.com/in/your-profile) |
+| **Me** | Full Stack Dev | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/pratham-kumar-a6b672275/) |
+
+</div>
+
+### 🌟 Team Contributions
+
+- **🔬 Research & Development**: Extensive research in precision agriculture and satellite data analysis
+- **💻 Technical Implementation**: Full-stack development with modern technologies and best practices
+- **🤖 AI/ML Innovation**: Advanced machine learning models for crop yield prediction and health analysis
+- **🎨 User Experience**: Intuitive design and seamless user interface for farmers and agricultural consultants
+- **☁️ Infrastructure**: Scalable cloud deployment and robust system architecture
+- **📊 Data Engineering**: Efficient processing of satellite imagery and agricultural datasets
+
+*Our diverse team combines expertise in computer science, agricultural engineering, data science, and user experience design to create impactful solutions for sustainable agriculture.*
 
 ## 🙏 Acknowledgments
 
