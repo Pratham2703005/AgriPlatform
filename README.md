@@ -364,7 +364,7 @@ Meet the dedicated team behind AgriPlatform - passionate developers, data scient
 | **Shikher Jain** | AI/ML Engineer | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/shikher-jain-0bb8a8259) |
 | **Aleena Khan** | Frontend Dev | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/aleenakhan-/) |
 | **Sheeba Salim** | AI/ML Engineer | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sheeba-salim-aa59051a5/) |
-| **Aqsa Musqir** | AI/ML Engineer | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://linkedin.com/in/your-profile) |
+| **Aqsa Mushir** | AI/ML Engineer | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/aqsa-mushir-176a0330b/ ) |
 | **Me** | Full Stack Dev | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/pratham-kumar-a6b672275/) |
 
 </div>
