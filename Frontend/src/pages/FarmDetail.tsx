@@ -3,6 +3,8 @@ import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import { useHeatmap } from '../hooks/useHeatmap';
+import { useWeather } from '../hooks/useWeather';
+import { WeatherWidget } from '../components/WeatherWidget';
 import { HeatmapOverlay } from '../components/map/HeatmapOverlay';
 import { ArrowLeft, Sprout, Edit, Trash2, Download, FileText, Map, Lock, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
 import { useEffect } from 'react';
@@ -15,6 +17,7 @@ export default function FarmDetail() {
   const { user, isGuestMode } = useAuth();
   const { getFarmById, deleteFarm, loading, farms } = useFarms();
   const { heatmapData, loading: heatmapLoading, error: heatmapError, fetchHeatmapData } = useHeatmap();
+  const { weatherData, loading: weatherLoading, fetchWeather } = useWeather();
   const [farm, setFarm] = React.useState<Farm | null>(null);
   const [hasInitiallyFetchedHeatmap, setHasInitiallyFetchedHeatmap] = React.useState(false);
 
@@ -25,6 +28,18 @@ export default function FarmDetail() {
       setFarm(foundFarm ?? null);
     }
   }, [loading, id, getFarmById, farms]);
+
+  // Fetch weather data when farm is loaded
+  useEffect(() => {
+    if (farm && farm.coordinates && farm.coordinates.length > 0) {
+      const validCoords = farm.coordinates.filter(c => c.length >= 2);
+      if (validCoords.length > 0) {
+        const sumLng = validCoords.reduce((s, c) => s + (c[0] ?? 0), 0);
+        const sumLat = validCoords.reduce((s, c) => s + (c[1] ?? 0), 0);
+        fetchWeather(sumLat / validCoords.length, sumLng / validCoords.length);
+      }
+    }
+  }, [farm, fetchWeather]);
 
   // Fetch heatmap data when farm is loaded (only once)
   useEffect(() => {
@@ -524,6 +539,30 @@ export default function FarmDetail() {
 
             {/* Enhanced Sidebar */}
             <div className="xl:col-span-2 space-y-6">
+              {/* Weather Widget */}
+              {weatherData && (
+                <WeatherWidget
+                  weatherData={weatherData}
+                  onRefresh={() => {
+                    if (farm && farm.coordinates && farm.coordinates.length > 0) {
+                      const validCoords = farm.coordinates.filter(c => c.length >= 2);
+                      if (validCoords.length > 0) {
+                        const sumLng = validCoords.reduce((s, c) => s + (c[0] ?? 0), 0);
+                        const sumLat = validCoords.reduce((s, c) => s + (c[1] ?? 0), 0);
+                        fetchWeather(sumLat / validCoords.length, sumLng / validCoords.length);
+                      }
+                    }
+                  }}
+                  loading={weatherLoading}
+                />
+              )}
+              {weatherLoading && !weatherData && (
+                <div className="card-elevated p-6 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-sky-200 border-t-sky-500 mx-auto mb-3" />
+                  <p className="text-sm text-neutral-500">Loading weather data...</p>
+                </div>
+              )}
+
               {/* Enhanced Farm Status */}
               <div className="card-elevated animate-in stagger-3">
                 <div className="p-6">
