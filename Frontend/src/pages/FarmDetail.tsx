@@ -3,8 +3,8 @@ import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import { useHeatmap } from '../hooks/useHeatmap';
-import { useWeather } from '../hooks/useWeather';
-import { WeatherWidget } from '../components/WeatherWidget';
+import { useWeatherCalendar } from '../hooks/useWeatherCalendar';
+import { FarmWeatherCalendar } from '../components/FarmWeatherCalendar';
 import { HeatmapOverlay } from '../components/map/HeatmapOverlay';
 import { ArrowLeft, Sprout, Edit, Trash2, Download, FileText, Map, Lock, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
 import { useEffect } from 'react';
@@ -17,7 +17,7 @@ export default function FarmDetail() {
   const { user, isGuestMode } = useAuth();
   const { getFarmById, deleteFarm, loading, farms } = useFarms();
   const { heatmapData, loading: heatmapLoading, error: heatmapError, fetchHeatmapData } = useHeatmap();
-  const { weatherData, loading: weatherLoading, fetchWeather } = useWeather();
+  const { calendarData, loading: calendarLoading, fetchCalendar } = useWeatherCalendar();
   const [farm, setFarm] = React.useState<Farm | null>(null);
   const [hasInitiallyFetchedHeatmap, setHasInitiallyFetchedHeatmap] = React.useState(false);
 
@@ -29,17 +29,22 @@ export default function FarmDetail() {
     }
   }, [loading, id, getFarmById, farms]);
 
-  // Fetch weather data when farm is loaded
+  // Fetch growing-season weather calendar when farm is loaded
   useEffect(() => {
-    if (farm && farm.coordinates && farm.coordinates.length > 0) {
+    if (farm && farm.coordinates && farm.coordinates.length > 0 && farm.plantingDate && farm.harvestDate) {
       const validCoords = farm.coordinates.filter(c => c.length >= 2);
       if (validCoords.length > 0) {
         const sumLng = validCoords.reduce((s, c) => s + (c[0] ?? 0), 0);
         const sumLat = validCoords.reduce((s, c) => s + (c[1] ?? 0), 0);
-        fetchWeather(sumLat / validCoords.length, sumLng / validCoords.length);
+        const lat = sumLat / validCoords.length;
+        const lon = sumLng / validCoords.length;
+        // Normalise dates to YYYY-MM-DD
+        const plantStr = farm.plantingDate.slice(0, 10);
+        const harvestStr = farm.harvestDate.slice(0, 10);
+        fetchCalendar(lat, lon, plantStr, harvestStr);
       }
     }
-  }, [farm, fetchWeather]);
+  }, [farm, fetchCalendar]);
 
   // Fetch heatmap data when farm is loaded (only once)
   useEffect(() => {
@@ -539,27 +544,32 @@ export default function FarmDetail() {
 
             {/* Enhanced Sidebar */}
             <div className="xl:col-span-2 space-y-6">
-              {/* Weather Widget */}
-              {weatherData && (
-                <WeatherWidget
-                  weatherData={weatherData}
+              {/* Growing Season Weather Calendar */}
+              {calendarData && (
+                <FarmWeatherCalendar
+                  calendarData={calendarData}
+                  loading={calendarLoading}
                   onRefresh={() => {
                     if (farm && farm.coordinates && farm.coordinates.length > 0) {
                       const validCoords = farm.coordinates.filter(c => c.length >= 2);
                       if (validCoords.length > 0) {
                         const sumLng = validCoords.reduce((s, c) => s + (c[0] ?? 0), 0);
                         const sumLat = validCoords.reduce((s, c) => s + (c[1] ?? 0), 0);
-                        fetchWeather(sumLat / validCoords.length, sumLng / validCoords.length);
+                        fetchCalendar(
+                          sumLat / validCoords.length,
+                          sumLng / validCoords.length,
+                          farm.plantingDate.slice(0, 10),
+                          farm.harvestDate.slice(0, 10)
+                        );
                       }
                     }
                   }}
-                  loading={weatherLoading}
                 />
               )}
-              {weatherLoading && !weatherData && (
+              {calendarLoading && !calendarData && (
                 <div className="card-elevated p-6 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-4 border-sky-200 border-t-sky-500 mx-auto mb-3" />
-                  <p className="text-sm text-neutral-500">Loading weather data...</p>
+                  <p className="text-sm text-neutral-500">Loading season forecast…</p>
                 </div>
               )}
 
