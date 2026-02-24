@@ -15,11 +15,21 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+export type LayerType = 'ndvi' | 'ndwi' | 'ndre';
+
+const LAYER_LABELS: Record<LayerType, string> = {
+  ndvi: 'Health Map',
+  ndwi: 'NDWI',
+  ndre: 'NDRE',
+};
+
 interface HeatmapOverlayProps {
   coordinates: number[][]; // Array of [lng, lat] pairs
   heatmapData?: HeatmapData | null;
   height?: string;
   className?: string;
+  activeLayer?: LayerType;
+  onLayerChange?: (layer: LayerType) => void;
 }
 
 interface MaskOverlay {
@@ -30,6 +40,13 @@ interface MaskOverlay {
   opacity: number;
   visible: boolean;
 }
+
+// Helper to create a fresh set of mask overlays
+const createMaskSet = (): MaskOverlay[] => [
+  { id: 'red', name: 'Stressed Areas', color: 'red', base64Data: '', opacity: 0.7, visible: true },
+  { id: 'yellow', name: 'Moderate Health', color: 'yellow', base64Data: '', opacity: 0.7, visible: true },
+  { id: 'green', name: 'Healthy Areas', color: 'green', base64Data: '', opacity: 0.7, visible: true },
+];
 
 // Component to handle image overlay bounds calculation
 const HeatmapImageOverlays: React.FC<{
@@ -79,54 +96,67 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   coordinates,
   heatmapData,
   height = '400px',
-  className = ''
+  className = '',
+  activeLayer: activeLayerProp,
+  onLayerChange,
 }) => {
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
   const [showOverlayControls, setShowOverlayControls] = useState(true);
+  const [activeLayerInternal, setActiveLayerInternal] = useState<LayerType>('ndvi');
+  const activeLayer = activeLayerProp ?? activeLayerInternal;
+  const setActiveLayer = (layer: LayerType) => {
+    setActiveLayerInternal(layer);
+    onLayerChange?.(layer);
+  };
   const mapRef = useRef<L.Map | null>(null);
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
-  // Initialize mask overlays
-  const [masks, setMasks] = useState<MaskOverlay[]>([
-    {
-      id: 'red',
-      name: 'Stressed Areas',
-      color: 'red',
-      base64Data: '',
-      opacity: 0.7,
-      visible: true
-    },
-    {
-      id: 'yellow',
-      name: 'Moderate Health',
-      color: 'yellow',
-      base64Data: '',
-      opacity: 0.7,
-      visible: true
-    },
-    {
-      id: 'green',
-      name: 'Healthy Areas',
-      color: 'green',
-      base64Data: '',
-      opacity: 0.7,
-      visible: true
-    }
-  ]);
+  // Independent mask state for each layer
+  const [ndviMasks, setNdviMasks] = useState<MaskOverlay[]>(createMaskSet());
+  const [ndwiMasks, setNdwiMasks] = useState<MaskOverlay[]>(createMaskSet());
+  const [ndreMasks, setNdreMasks] = useState<MaskOverlay[]>(createMaskSet());
 
-  // Update masks when heatmap data changes
+  // Helpers to get/set the active layer's masks
+  const masksMap: Record<LayerType, MaskOverlay[]> = {
+    ndvi: ndviMasks,
+    ndwi: ndwiMasks,
+    ndre: ndreMasks,
+  };
+
+  const settersMap: Record<LayerType, React.Dispatch<React.SetStateAction<MaskOverlay[]>>> = {
+    ndvi: setNdviMasks,
+    ndwi: setNdwiMasks,
+    ndre: setNdreMasks,
+  };
+
+  const activeMasks = masksMap[activeLayer];
+  const setActiveMasks = settersMap[activeLayer];
+
+  // Update all mask sets when heatmap data changes
   useEffect(() => {
-    if (heatmapData?.masks) {
-      setMasks(prevMasks => prevMasks.map(mask => ({
-        ...mask,
-        base64Data: 
-          mask.id === 'red' ? heatmapData.masks.red_mask_base64 :
-          mask.id === 'yellow' ? heatmapData.masks.yellow_mask_base64 :
-          mask.id === 'green' ? heatmapData.masks.green_mask_base64 :
-          mask.base64Data
-      })));
-    }
+    if (!heatmapData) return;
+
+    const applyMaskData = (
+      setter: React.Dispatch<React.SetStateAction<MaskOverlay[]>>,
+      source: { red_mask_base64: string; yellow_mask_base64: string; green_mask_base64: string } | undefined,
+    ) => {
+      if (!source) return;
+      setter(prev =>
+        prev.map(mask => ({
+          ...mask,
+          base64Data:
+            mask.id === 'red' ? source.red_mask_base64 :
+            mask.id === 'yellow' ? source.yellow_mask_base64 :
+            mask.id === 'green' ? source.green_mask_base64 :
+            mask.base64Data,
+        })),
+      );
+    };
+
+    applyMaskData(setNdviMasks, heatmapData.masks);
+    applyMaskData(setNdwiMasks, heatmapData['ndwi-masks']);
+    applyMaskData(setNdreMasks, heatmapData['ndre-masks']);
   }, [heatmapData]);
 
   // Convert coordinates to Leaflet format [lat, lng]
@@ -217,7 +247,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   };
 
   const updateMaskOpacity = (maskId: string, opacity: number) => {
-    setMasks(prevMasks => 
+    setActiveMasks(prevMasks => 
       prevMasks.map(mask => 
         mask.id === maskId ? { ...mask, opacity } : mask
       )
@@ -225,7 +255,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   };
 
   const toggleMaskVisibility = (maskId: string) => {
-    setMasks(prevMasks => 
+    setActiveMasks(prevMasks => 
       prevMasks.map(mask => 
         mask.id === maskId ? { ...mask, visible: !mask.visible } : mask
       )
@@ -269,9 +299,9 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
             />
           )}
 
-          {/* Heatmap Image Overlays */}
+          {/* Heatmap Image Overlays — only the active layer's masks */}
           {heatmapData && (
-            <HeatmapImageOverlays coordinates={coordinates} masks={masks} />
+            <HeatmapImageOverlays coordinates={coordinates} masks={activeMasks} />
           )}
         </MapContainer>
       </div>
@@ -392,11 +422,25 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
         <div className="absolute top-3 right-3 z-[1000] bg-white backdrop-blur-sm rounded-lg shadow-lg border border-neutral-200 p-4 min-w-[280px]">
           <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
             <Settings className="h-4 w-4 mr-2" />
-            Heatmap Overlays
+            Overlay Controls
           </h3>
+
+          {/* Layer Selector Tabs */}
+          <div className="layer-tabs mb-4">
+            {(Object.keys(LAYER_LABELS) as LayerType[]).map((layer) => (
+              <button
+                key={layer}
+                type="button"
+                onClick={() => setActiveLayer(layer)}
+                className={`layer-tab ${activeLayer === layer ? 'layer-tab--active' : ''}`}
+              >
+                {LAYER_LABELS[layer]}
+              </button>
+            ))}
+          </div>
           
           <div className="space-y-4">
-            {masks.map((mask) => (
+            {activeMasks.map((mask) => (
               <div key={mask.id} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -443,13 +487,13 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
           <div className="mt-4 pt-3 border-t border-gray-200">
             <div className="flex space-x-2">
               <button
-                onClick={() => setMasks(prevMasks => prevMasks.map(mask => ({ ...mask, visible: true })))}
+                onClick={() => setActiveMasks(prevMasks => prevMasks.map(mask => ({ ...mask, visible: true })))}
                 className="flex-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
               >
                 Show All
               </button>
               <button
-                onClick={() => setMasks(prevMasks => prevMasks.map(mask => ({ ...mask, visible: false })))}
+                onClick={() => setActiveMasks(prevMasks => prevMasks.map(mask => ({ ...mask, visible: false })))}
                 className="flex-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
               >
                 Hide All
