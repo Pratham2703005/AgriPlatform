@@ -39,10 +39,74 @@ export interface Crop {
   notes: string;
 }
 
+export interface HeatmapCacheEntry {
+  farmId: string;
+  data: {
+    predicted_yield: number;
+    old_yield: number;
+    growth: {
+      ratio: number;
+      percentage: number;
+    };
+    location: {
+      district: string;
+      coordinates: {
+        latitude: number;
+        longitude: number;
+      };
+      complete_address: string;
+    };
+    ndvi_shape: number[];
+    sensor_shape: number[];
+    masks: {
+      red_mask_base64: string;
+      yellow_mask_base64: string;
+      green_mask_base64: string;
+    };
+    'ndwi-masks'?: {
+      red_mask_base64: string;
+      yellow_mask_base64: string;
+      green_mask_base64: string;
+    };
+    'ndre-masks'?: {
+      red_mask_base64: string;
+      yellow_mask_base64: string;
+      green_mask_base64: string;
+    };
+    pixel_counts: {
+      valid: number;
+      red: number;
+      yellow: number;
+      green: number;
+    };
+    thresholds: {
+      t1: number;
+      t2: number;
+    };
+    suggestions: {
+      overall_assessment: string;
+      yield_analysis: {
+        predicted_yield: number;
+        previous_yield: number;
+        yield_change: number;
+        yield_change_percent: number;
+        status: string;
+      };
+      field_management: string[];
+      soil_recommendations: string[];
+      immediate_actions: string[];
+      seasonal_planning: string[];
+      risk_alerts: string[];
+    };
+  };
+  cachedAt: string;
+}
+
 // Storage keys for localStorage
 const USERS_KEY = 'agriculture_users';
 const FARMS_KEY = 'agriculture_farms';
 const CROPS_KEY = 'agriculture_crops';
+const HEATMAP_CACHE_KEY = 'agriculture_heatmap_cache';
 
 // Utility functions for localStorage operations
 function readFromStorage<T>(key: string): T[] {
@@ -209,5 +273,41 @@ export const cropService = {
     crops.push(newCrop);
     writeToStorage(CROPS_KEY, crops);
     return newCrop;
+  }
+};
+
+// Heatmap Cache operations
+export const heatmapService = {
+  async getByFarmId(farmId: string): Promise<HeatmapCacheEntry | null> {
+    const cache = readFromStorage<HeatmapCacheEntry>(HEATMAP_CACHE_KEY);
+    return cache.find(c => c.farmId === farmId) || null;
+  },
+
+  async save(farmId: string, data: HeatmapCacheEntry['data']): Promise<HeatmapCacheEntry> {
+    const cache = readFromStorage<HeatmapCacheEntry>(HEATMAP_CACHE_KEY);
+    
+    // Remove old entry if exists
+    const filteredCache = cache.filter(c => c.farmId !== farmId);
+    
+    const newEntry: HeatmapCacheEntry = {
+      farmId,
+      data,
+      cachedAt: new Date().toISOString()
+    };
+    
+    filteredCache.push(newEntry);
+    writeToStorage(HEATMAP_CACHE_KEY, filteredCache);
+    return newEntry;
+  },
+
+  async getAllCache(): Promise<HeatmapCacheEntry[]> {
+    return readFromStorage<HeatmapCacheEntry>(HEATMAP_CACHE_KEY);
+  },
+
+  async clearByFarmId(farmId: string): Promise<boolean> {
+    const cache = readFromStorage<HeatmapCacheEntry>(HEATMAP_CACHE_KEY);
+    const filteredCache = cache.filter(c => c.farmId !== farmId);
+    writeToStorage(HEATMAP_CACHE_KEY, filteredCache);
+    return true;
   }
 };

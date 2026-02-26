@@ -16,7 +16,7 @@ export default function FarmDetail() {
   const navigate = useNavigate();
   const { user, isGuestMode } = useAuth();
   const { getFarmById, deleteFarm, loading, farms } = useFarms();
-  const { heatmapData, loading: heatmapLoading, error: heatmapError, fetchHeatmapData } = useHeatmap();
+  const { heatmapData, loading: heatmapLoading, error: heatmapError, fetchHeatmapData, isCached, cachedAt } = useHeatmap(id);
   const { calendarData, loading: calendarLoading, fetchCalendar } = useWeatherCalendar();
   const [farm, setFarm] = React.useState<Farm | null>(null);
   const [hasInitiallyFetchedHeatmap, setHasInitiallyFetchedHeatmap] = React.useState(false);
@@ -280,6 +280,8 @@ export default function FarmDetail() {
                     heatmapData={heatmapData}
                     height="600px"
                     className="w-full"
+                    isCached={isCached}
+                    cachedAt={cachedAt}
                   />
                 </div>
               </div>

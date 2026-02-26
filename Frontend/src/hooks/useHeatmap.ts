@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { heatmapService } from '../services/fileDatabase';
 
 export interface HeatmapData {
   predicted_yield: number;
@@ -18,6 +19,16 @@ export interface HeatmapData {
   ndvi_shape: number[];
   sensor_shape: number[];
   masks: {
+    red_mask_base64: string;
+    yellow_mask_base64: string;
+    green_mask_base64: string;
+  };
+  'ndwi-masks'?: {
+    red_mask_base64: string;
+    yellow_mask_base64: string;
+    green_mask_base64: string;
+  };
+  'ndre-masks'?: {
     red_mask_base64: string;
     yellow_mask_base64: string;
     green_mask_base64: string;
@@ -49,10 +60,41 @@ export interface HeatmapData {
   };
 }
 
-export const useHeatmap = () => {
+export interface UseHeatmapReturn {
+  heatmapData: HeatmapData | null;
+  loading: boolean;
+  error: string | null;
+  isCached: boolean;
+  cachedAt: string | null;
+  fetchHeatmapData: (coordinates: number[][], t1?: number, t2?: number) => Promise<void>;
+}
+
+export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
   const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+
+  // Load cached data on mount if farmId is provided
+  useEffect(() => {
+    if (farmId) {
+      const loadCachedData = async () => {
+        try {
+          const cached = await heatmapService.getByFarmId(farmId);
+          if (cached) {
+            setHeatmapData(cached.data);
+            setIsCached(true);
+            setCachedAt(cached.cachedAt);
+            console.log('📦 Loaded cached heatmap data for farm:', farmId);
+          }
+        } catch (err) {
+          console.error('Error loading cached heatmap data:', err);
+        }
+      };
+      loadCachedData();
+    }
+  }, [farmId]);
 
   const fetchHeatmapData = useCallback(async (coordinates: number[][], t1: number = 0.5, t2: number = 0.75) => {
     setLoading(true);
@@ -76,20 +118,42 @@ export const useHeatmap = () => {
         throw new Error('Failed to fetch heatmap analysis');
       }
 
-      const data = await response.json();
+      const data: HeatmapData = await response.json();
       setHeatmapData(data);
+      setIsCached(false);
+      setCachedAt(null);
+
+      // Cache the data if farmId is provided
+      if (farmId) {
+        try {
+          const cachedEntry = await heatmapService.save(farmId, data);
+          console.log('💾 Heatmap data cached for farm:', farmId);
+          setCachedAt(cachedEntry.cachedAt);
+        } catch (cacheErr) {
+          console.error('Error caching heatmap data:', cacheErr);
+        }
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching heatmap data');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching heatmap data';
+      setError(errorMessage);
       console.error('Heatmap fetch error:', err);
+
+      // If fetch fails and we have cached data, keep it visible
+      if (heatmapData) {
+        setIsCached(true);
+        console.log('⚠️ Fetch failed, using cached heatmap data');
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [farmId, heatmapData]);
 
   return {
     heatmapData,
     loading,
     error,
+    isCached,
+    cachedAt,
     fetchHeatmapData,
   };
 };

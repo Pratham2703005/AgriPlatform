@@ -20,6 +20,8 @@ interface HeatmapOverlayProps {
   heatmapData?: HeatmapData | null;
   height?: string;
   className?: string;
+  isCached?: boolean;
+  cachedAt?: string | null;
 }
 
 interface MaskOverlay {
@@ -79,7 +81,9 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   coordinates,
   heatmapData,
   height = '400px',
-  className = ''
+  className = '',
+  isCached = false,
+  cachedAt = null
 }) => {
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
@@ -454,6 +458,25 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
               >
                 Hide All
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cache Status Indicator */}
+      {isCached && cachedAt && (
+        <div className="absolute bottom-3 right-3 z-[999] bg-blue-50 border border-blue-200 rounded-lg p-3 max-w-xs shadow-md">
+          <div className="flex items-start space-x-2">
+            <div className="text-blue-600 mt-0.5">
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-blue-900">Cached Data</p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                Updated: {new Date(cachedAt).toLocaleDateString()} at {new Date(cachedAt).toLocaleTimeString()}
+              </p>
             </div>
           </div>
         </div>
