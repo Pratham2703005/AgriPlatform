@@ -19,8 +19,8 @@ export type LayerType = 'ndvi' | 'ndwi' | 'ndre';
 
 const LAYER_LABELS: Record<LayerType, string> = {
   ndvi: 'Health Map',
-  ndwi: 'NDWI',
-  ndre: 'NDRE',
+  ndwi: 'Hydration Map',
+  ndre: 'Nutrient Map',
 };
 
 interface HeatmapOverlayProps {
