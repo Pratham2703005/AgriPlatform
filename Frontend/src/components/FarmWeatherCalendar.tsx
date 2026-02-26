@@ -12,6 +12,7 @@ import {
   RadialBarChart,
   RadialBar,
   Cell,
+  ReferenceLine,
 } from 'recharts';
 import {
   ChevronLeft,
@@ -60,6 +61,38 @@ function weatherLabel(code: number): string {
   if (code <= 82) return 'Rain Showers';
   if (code <= 86) return 'Snow Showers';
   return 'Thunderstorm';
+}
+
+// ─── Rain helpers ────────────────────────────────────────────────────────────
+
+interface RainInfo {
+  label: string;
+  emoji: string;
+  color: string;       // text color class
+  bg: string;          // bg color class
+  border: string;      // border color class
+  barColor: string;    // hex for charts
+  advice: string;
+  cellTint: string;    // cell background tint class
+}
+
+function getRainInfo(precipMm: number, precipProb: number | null): RainInfo {
+  const prob = precipProb ?? 0;
+  // Classify by actual mm (historical) or probability (forecast)
+  const intensity = precipMm > 20 ? 'heavy'
+    : precipMm > 8 ? 'moderate'
+    : precipMm > 1 ? 'light'
+    : prob >= 70 ? 'moderate'
+    : prob >= 40 ? 'light'
+    : 'dry';
+
+  const map: Record<string, RainInfo> = {
+    heavy:    { label: 'Heavy Rain',    emoji: '🌧️',  color: 'text-blue-800',   bg: 'bg-blue-100',   border: 'border-blue-300',   barColor: '#1d4ed8', advice: 'Avoid field work. Risk of soil erosion.',             cellTint: 'bg-blue-200/60' },
+    moderate: { label: 'Moderate Rain', emoji: '🌦️',  color: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200',   barColor: '#3b82f6', advice: 'Delay spraying. Check drainage.',                    cellTint: 'bg-blue-100/50' },
+    light:    { label: 'Light Rain',    emoji: '🌂',  color: 'text-sky-700',    bg: 'bg-sky-50',     border: 'border-sky-200',    barColor: '#38bdf8', advice: 'Light irrigation may not be needed.',                cellTint: 'bg-sky-100/40' },
+    dry:      { label: 'Dry Day',       emoji: '☀️',  color: 'text-neutral-600', bg: 'bg-neutral-50', border: 'border-neutral-200', barColor: '#d1d5db', advice: 'Consider irrigation if soil moisture is low.',        cellTint: '' },
+  };
+  return (map[intensity] ?? map['dry']) as RainInfo;
 }
 
 function conditionGradient(code: number): string {
@@ -137,12 +170,15 @@ const TempTooltip = ({ active, payload, label }: { active?: boolean; payload?: {
   return null;
 };
 
-const RainTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) => {
+const RainTooltip = ({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number }[]; label?: string }) => {
   if (active && payload && payload.length) {
+    const rain = payload.find(p => p.name === 'rain');
+    const prob = payload.find(p => p.name === 'prob');
     return (
-      <div className="bg-white border border-neutral-200 rounded-xl px-3 py-2 shadow-lg text-xs">
+      <div className="bg-white border border-blue-200 rounded-xl px-3 py-2 shadow-lg text-xs">
         <p className="font-semibold text-neutral-700 mb-1">{label}</p>
-        <p className="text-blue-600">{(payload[0]?.value ?? 0).toFixed(1)} mm</p>
+        {rain && <p className="text-blue-700 font-medium">💧 {(rain.value ?? 0).toFixed(1)} mm</p>}
+        {prob && (prob.value ?? 0) > 0 && <p className="text-sky-600">{Math.round(prob.value ?? 0)}% chance</p>}
       </div>
     );
   }
@@ -175,10 +211,12 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({ day, allDays, onBack }) =
       const label = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const isCurrent = dateStr === day.date;
       return d && d.availability !== 'unavailable'
-        ? { label, high: d.tempMax, low: d.tempMin, rain: d.precipitationSum, isCurrent }
-        : { label, high: null, low: null, rain: null, isCurrent };
-    }).filter(d => d.high !== null);
+        ? { label, high: d.tempMax, low: d.tempMin, rain: d.precipitationSum, prob: d.precipitationProbability ?? 0, isCurrent }
+        : { label, high: null, low: null, rain: null, prob: null, isCurrent };
+    }).filter(d => d.rain !== null);
   }, [day.date, allDays]);
+
+  const rainInfo = getRainInfo(day.precipitationSum, day.precipitationProbability);
 
   const uvPercent = Math.min(100, (day.uvIndexMax / 12) * 100);
   const uvColor = day.uvIndexMax >= 8 ? '#ef4444' : day.uvIndexMax >= 5 ? '#f97316' : '#22c55e';
@@ -247,27 +285,128 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({ day, allDays, onBack }) =
       </div>
 
       <div className="p-5 space-y-5">
-        {/* Quick stats row */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-blue-50 rounded-xl p-3 text-center">
-            <Droplets className="h-4 w-4 text-blue-500 mx-auto mb-1" />
-            <p className="text-xs text-neutral-500">Rain</p>
-            <p className="font-bold text-neutral-800 text-sm">{day.precipitationSum.toFixed(1)}mm</p>
-            {day.precipitationProbability !== null && (
-              <p className="text-xs text-blue-600">{day.precipitationProbability}%</p>
+        {/* ── Rain Focus Card ── */}
+        <div className={`rounded-2xl border ${rainInfo.border} ${rainInfo.bg} p-4`}>
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <Droplets className={`h-4 w-4 ${rainInfo.color}`} />
+                <span className={`text-xs font-bold uppercase tracking-wide ${rainInfo.color}`}>Rain Forecast</span>
+              </div>
+              <div className="flex items-baseline space-x-1.5">
+                <span className="text-3xl font-bold text-neutral-900">{day.precipitationSum.toFixed(1)}</span>
+                <span className="text-sm font-medium text-neutral-500">mm</span>
+              </div>
+              {day.precipitationProbability !== null && (
+                <div className="mt-1.5">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-xs text-neutral-500">Probability</span>
+                    <span className={`text-xs font-bold ${rainInfo.color}`}>{day.precipitationProbability}%</span>
+                  </div>
+                  <div className="w-full bg-white/60 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-2 rounded-full transition-all"
+                      style={{ width: `${day.precipitationProbability}%`, backgroundColor: rainInfo.barColor }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <span className="text-4xl leading-none">{rainInfo.emoji}</span>
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-white/60 ${rainInfo.color}`}>{rainInfo.label}</span>
+            <span className="text-[11px] text-neutral-500 italic">{rainInfo.advice}</span>
+          </div>
+        </div>
+
+        {/* ── Precipitation Bar + Probability Area charts ── */}
+        {contextWindow.length >= 2 && (
+          <div>
+            <div className="flex items-center space-x-2 mb-3">
+              <Droplets className="h-4 w-4 text-blue-500" />
+              <h4 className="text-sm font-semibold text-neutral-800">7-Day Rain Overview</h4>
+              <span className="text-xs text-neutral-400">(±3 days)</span>
+            </div>
+            {/* Bar chart: daily precipitation mm */}
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={contextWindow} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={20}>
+                <defs>
+                  <linearGradient id="rainBarGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#93c5fd" stopOpacity={0.7} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0f2fe" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} unit="mm" />
+                <Tooltip content={<RainTooltip />} />
+                <ReferenceLine y={5} stroke="#f97316" strokeDasharray="3 3" strokeWidth={1} label={{ value: '5mm', position: 'insideTopRight', fontSize: 9, fill: '#f97316' }} />
+                <Bar dataKey="rain" name="rain" radius={[4, 4, 0, 0]}>
+                  {contextWindow.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.isCurrent ? '#1d4ed8' : entry.rain !== null && (entry.rain as number) > 5 ? '#3b82f6' : '#bfdbfe'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            {/* Area chart: rain probability */}
+            {contextWindow.some(d => (d.prob ?? 0) > 0) && (
+              <>
+                <div className="flex items-center space-x-2 mt-4 mb-2">
+                  <span className="text-xs font-semibold text-sky-600">Rain Probability (%)</span>
+                </div>
+                <ResponsiveContainer width="100%" height={80}>
+                  <AreaChart data={contextWindow} margin={{ top: 2, right: 4, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="probGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} unit="%" />
+                    <Tooltip content={<RainTooltip />} />
+                    <ReferenceLine y={50} stroke="#38bdf8" strokeDasharray="3 3" strokeWidth={1} />
+                    <Area type="monotone" dataKey="prob" name="prob" stroke="#0ea5e9" strokeWidth={2} fill="url(#probGrad)"
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      dot={(props: any) => {
+                        const { cx = 0, cy = 0, payload } = props;
+                        return (payload as { isCurrent: boolean }).isCurrent
+                          ? <circle key={`pd-${cx}`} cx={cx} cy={cy} r={5} fill="#0ea5e9" stroke="#fff" strokeWidth={2} />
+                          : <circle key={`p-${cx}`} cx={cx} cy={cy} r={2} fill="#0ea5e9" stroke="none" />;
+                      }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+                <div className="flex items-center justify-center space-x-4 mt-1">
+                  <span className="flex items-center space-x-1 text-xs text-neutral-500"><span className="inline-block w-3 h-0.5 bg-sky-400 rounded" /><span>Probability</span></span>
+                  <span className="text-xs text-neutral-400">— 50% threshold</span>
+                </div>
+              </>
             )}
           </div>
-          <div className="bg-teal-50 rounded-xl p-3 text-center">
-            <Wind className="h-4 w-4 text-teal-500 mx-auto mb-1" />
-            <p className="text-xs text-neutral-500">Wind</p>
+        )}
+
+        {/* ── Secondary stats: Wind + UV ── */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-teal-50 rounded-xl p-3">
+            <div className="flex items-center space-x-1.5 mb-1">
+              <Wind className="h-3.5 w-3.5 text-teal-500" />
+              <p className="text-xs text-neutral-500">Wind</p>
+            </div>
             <p className="font-bold text-neutral-800 text-sm">{Math.round(day.windSpeedMax)}<span className="text-xs font-normal"> km/h</span></p>
-            <p className="text-xs text-teal-600">{day.windSpeedMax > 35 ? 'Strong' : day.windSpeedMax > 20 ? 'Moderate' : 'Light'}</p>
+            <p className="text-xs text-teal-600 mt-0.5">{day.windSpeedMax > 35 ? 'Strong' : day.windSpeedMax > 20 ? 'Moderate' : 'Light'}</p>
           </div>
-          <div className="bg-amber-50 rounded-xl p-3 text-center">
-            <Sun className="h-4 w-4 text-amber-500 mx-auto mb-1" />
-            <p className="text-xs text-neutral-500">UV Index</p>
+          <div className="bg-amber-50 rounded-xl p-3">
+            <div className="flex items-center space-x-1.5 mb-1">
+              <Sun className="h-3.5 w-3.5 text-amber-500" />
+              <p className="text-xs text-neutral-500">UV Index</p>
+            </div>
             <p className="font-bold text-neutral-800 text-sm">{day.uvIndexMax.toFixed(1)}</p>
-            <p className={`text-xs ${day.uvIndexMax >= 8 ? 'text-red-500' : day.uvIndexMax >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
+            <p className={`text-xs mt-0.5 ${day.uvIndexMax >= 8 ? 'text-red-500' : day.uvIndexMax >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
               {day.uvIndexMax >= 8 ? 'Very High' : day.uvIndexMax >= 5 ? 'Moderate' : 'Low'}
             </p>
           </div>
@@ -335,29 +474,7 @@ const DayDetailView: React.FC<DayDetailViewProps> = ({ day, allDays, onBack }) =
           </div>
         )}
 
-        {/* Precipitation bar chart */}
-        {contextWindow.length >= 3 && (
-          <div>
-            <div className="flex items-center space-x-2 mb-3">
-              <Droplets className="h-4 w-4 text-blue-500" />
-              <h4 className="text-sm font-semibold text-neutral-800">Precipitation</h4>
-              <span className="text-xs text-neutral-400">(mm, ±3 days)</span>
-            </div>
-            <ResponsiveContainer width="100%" height={110}>
-              <BarChart data={contextWindow} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={18}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} unit="mm" />
-                <Tooltip content={<RainTooltip />} />
-                <Bar dataKey="rain" radius={[4, 4, 0, 0]}>
-                  {contextWindow.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.isCurrent ? '#3b82f6' : '#bfdbfe'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+
 
         {/* UV radial gauge + Wind bar */}
         <div className="grid grid-cols-2 gap-3">
@@ -463,10 +580,12 @@ export const FarmWeatherCalendar: React.FC<FarmWeatherCalendarProps> = ({
       return y === viewYear && m === viewMonth + 1 && d.availability !== 'unavailable';
     });
     if (monthDays.length === 0) return null;
-    const goodDays = monthDays.filter(d => ['Excellent','Good'].includes(getSuitability(d).label)).length;
-    const rainDays  = monthDays.filter(d => d.precipitationSum > 1).length;
-    const avgMax    = Math.round(monthDays.reduce((s, d) => s + d.tempMax, 0) / monthDays.length);
-    return { goodDays, rainDays, avgMax };
+    const goodDays   = monthDays.filter(d => ['Excellent','Good'].includes(getSuitability(d).label)).length;
+    const rainDays   = monthDays.filter(d => d.precipitationSum > 1).length;
+    const avgMax     = Math.round(monthDays.reduce((s, d) => s + d.tempMax, 0) / monthDays.length);
+    const totalRain  = Math.round(monthDays.reduce((s, d) => s + d.precipitationSum, 0));
+    const heavyDays  = monthDays.filter(d => d.precipitationSum > 10).length;
+    return { goodDays, rainDays, avgMax, totalRain, heavyDays };
   }, [days, viewYear, viewMonth]);
 
   const selectedDay = selectedDate ? days[selectedDate] : null;
@@ -549,9 +668,13 @@ export const FarmWeatherCalendar: React.FC<FarmWeatherCalendarProps> = ({
                 const isPlanting = dateStr === plantingDate;
                 const isHarvest  = dateStr === harvestDate;
                 const suitability = dayData ? getSuitability(dayData) : null;
+                const rainInfo = dayData && dayData.availability !== 'unavailable'
+                  ? getRainInfo(dayData.precipitationSum, dayData.precipitationProbability)
+                  : null;
 
                 let cellBg = '';
                 if (!inRange)    cellBg = 'bg-neutral-50';
+                else if (dayData && rainInfo?.cellTint) cellBg = rainInfo.cellTint;
                 else if (dayData) cellBg = suitability?.cellBg ?? '';
 
                 return (
@@ -585,11 +708,12 @@ export const FarmWeatherCalendar: React.FC<FarmWeatherCalendarProps> = ({
                         : <>
                             <span className="text-[10px] leading-none">{weatherEmoji(dayData.weatherCode)}</span>
                             <span className="text-[8px] font-bold leading-none text-neutral-700">{Math.round(dayData.tempMax)}°</span>
-                            {dayData.precipitationProbability !== null && dayData.precipitationProbability > 20 && (
-                              <span className="text-[7px] leading-none text-blue-600 font-semibold truncate w-full text-center">{dayData.precipitationProbability}%</span>
+                            {/* Always show rain info if it exists */}
+                            {dayData.precipitationProbability !== null && dayData.precipitationProbability >= 20 && (
+                              <span className="text-[7px] leading-none text-blue-700 font-bold truncate w-full text-center">💧{dayData.precipitationProbability}%</span>
                             )}
-                            {dayData.precipitationProbability === null && dayData.precipitationSum > 1 && (
-                              <span className="text-[7px] leading-none text-blue-500 font-semibold truncate w-full text-center">{dayData.precipitationSum.toFixed(0)}mm</span>
+                            {dayData.precipitationProbability === null && dayData.precipitationSum > 0.5 && (
+                              <span className="text-[7px] leading-none text-blue-600 font-bold truncate w-full text-center">💧{dayData.precipitationSum.toFixed(1)}mm</span>
                             )}
                           </>
                     )}
@@ -602,16 +726,26 @@ export const FarmWeatherCalendar: React.FC<FarmWeatherCalendarProps> = ({
 
         {/* Month stats */}
         {monthStats && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700">
-              <Sprout className="h-3 w-3" /><span>{monthStats.goodDays} good days</span>
-            </span>
-            <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">
-              <Droplets className="h-3 w-3" /><span>{monthStats.rainDays} rain days</span>
-            </span>
-            <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700">
-              <Sun className="h-3 w-3" /><span>Avg {monthStats.avgMax}°C</span>
-            </span>
+          <div className="mt-3 space-y-2">
+            {/* Rain summary row – emphasized */}
+            <div className="flex items-center space-x-2 bg-blue-50 rounded-xl px-3 py-2">
+              <Droplets className="h-4 w-4 text-blue-600 flex-shrink-0" />
+              <span className="text-xs font-bold text-blue-800">{monthStats.totalRain} mm total</span>
+              <span className="text-neutral-300 text-xs">|</span>
+              <span className="text-xs text-blue-700">{monthStats.rainDays} rain days</span>
+              {monthStats.heavyDays > 0 && (
+                <><span className="text-neutral-300 text-xs">|</span>
+                <span className="text-xs text-blue-600 font-semibold">{monthStats.heavyDays} heavy (&gt;10mm)</span></>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700">
+                <Sprout className="h-3 w-3" /><span>{monthStats.goodDays} good days</span>
+              </span>
+              <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700">
+                <Sun className="h-3 w-3" /><span>Avg {monthStats.avgMax}°C</span>
+              </span>
+            </div>
           </div>
         )}
 
