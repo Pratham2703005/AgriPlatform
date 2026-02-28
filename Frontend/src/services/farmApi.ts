@@ -1,6 +1,6 @@
 import { get, post, put, del } from '../utils/api';
 import { AuthAPI } from './authApi';
-import type { Farm } from '../types/farm';
+import type { Farm, HeatmapData } from '../types/farm';
 import type { ApiFarmData } from '../types/api';
 
 // API Request/Response Types
@@ -217,6 +217,47 @@ export class FarmAPI {
     } catch (error) {
       console.error('Error updating farm:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get cached heatmap data for a farm from MongoDB
+   */
+  static async getHeatmapCache(
+    farmId: string
+  ): Promise<{ data: HeatmapData; cachedAt: string } | null> {
+    try {
+      const authConfig = AuthAPI.getAuthConfig();
+      const response = await get<{
+        code: number;
+        message: string;
+        result: { data: HeatmapData; cachedAt: string };
+      }>(`/farms/${farmId}/heatmap`, authConfig);
+      if (response.code === 1) return response.result;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Save heatmap data for a farm to MongoDB
+   */
+  static async saveHeatmapCache(
+    farmId: string,
+    data: HeatmapData
+  ): Promise<string | null> {
+    try {
+      const authConfig = AuthAPI.getAuthConfig();
+      const response = await post<{
+        code: number;
+        message: string;
+        result: { cachedAt: string };
+      }>(`/farms/${farmId}/heatmap`, { data }, authConfig);
+      if (response.code === 1) return response.result.cachedAt;
+      return null;
+    } catch {
+      return null;
     }
   }
 

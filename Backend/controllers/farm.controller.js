@@ -384,6 +384,69 @@ const deleteFarm = async (req, res) => {
   }
 };
 
+// GET /farms/:id/heatmap - Retrieve cached heatmap data from MongoDB
+const getHeatmap = async (req, res) => {
+  try {
+    const farmId = req.params.id;
+    const userId = req.user._id;
+
+    const farm = await Farm.findById(farmId);
+    if (!farm) {
+      return res.status(404).json(new ResponseEntity(0, "Farm not found", {}));
+    }
+    if (!farm.isOwnedBy(userId) && req.user.role !== "admin") {
+      return res.status(403).json(new ResponseEntity(0, "Access denied", {}));
+    }
+    if (!farm.heatmapCache || !farm.heatmapCache.data) {
+      return res.status(404).json(new ResponseEntity(0, "No heatmap cache found", {}));
+    }
+
+    return res.status(200).json(
+      new ResponseEntity(1, "Heatmap cache retrieved", {
+        data: farm.heatmapCache.data,
+        cachedAt: farm.heatmapCache.cachedAt,
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching heatmap cache:", error);
+    return res.status(500).json(new ResponseEntity(0, "Error fetching heatmap cache", {}));
+  }
+};
+
+// POST /farms/:id/heatmap - Save heatmap data to MongoDB
+const saveHeatmap = async (req, res) => {
+  try {
+    const farmId = req.params.id;
+    const userId = req.user._id;
+    const { data } = req.body;
+
+    if (!data) {
+      return res.status(400).json(new ResponseEntity(0, "No heatmap data provided", {}));
+    }
+
+    const farm = await Farm.findById(farmId);
+    if (!farm) {
+      return res.status(404).json(new ResponseEntity(0, "Farm not found", {}));
+    }
+    if (!farm.isOwnedBy(userId) && req.user.role !== "admin") {
+      return res.status(403).json(new ResponseEntity(0, "Access denied", {}));
+    }
+
+    const cachedAt = new Date();
+    farm.heatmapCache = { data, cachedAt };
+    await farm.save();
+
+    return res.status(200).json(
+      new ResponseEntity(1, "Heatmap data saved successfully", {
+        cachedAt: cachedAt.toISOString(),
+      })
+    );
+  } catch (error) {
+    console.error("Error saving heatmap cache:", error);
+    return res.status(500).json(new ResponseEntity(0, "Error saving heatmap cache", {}));
+  }
+};
+
 module.exports = {
   getFarms,
   getFarm,
@@ -391,4 +454,6 @@ module.exports = {
   updateFarm,
   deleteFarm,
   getAllFarms,
+  getHeatmap,
+  saveHeatmap,
 };

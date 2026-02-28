@@ -1,64 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { heatmapService } from '../services/fileDatabase';
-
-export interface HeatmapData {
-  predicted_yield: number;
-  old_yield: number;
-  growth: {
-    ratio: number;
-    percentage: number;
-  };
-  location: {
-    district: string;
-    coordinates: {
-      latitude: number;
-      longitude: number;
-    };
-    complete_address: string;
-  };
-  ndvi_shape: number[];
-  sensor_shape: number[];
-  masks: {
-    red_mask_base64: string;
-    yellow_mask_base64: string;
-    green_mask_base64: string;
-  };
-  'ndwi-masks'?: {
-    red_mask_base64: string;
-    yellow_mask_base64: string;
-    green_mask_base64: string;
-  };
-  'ndre-masks'?: {
-    red_mask_base64: string;
-    yellow_mask_base64: string;
-    green_mask_base64: string;
-  };
-  pixel_counts: {
-    valid: number;
-    red: number;
-    yellow: number;
-    green: number;
-  };
-  thresholds: {
-    t1: number;
-    t2: number;
-  };
-  suggestions: {
-    overall_assessment: string;
-    yield_analysis: {
-      predicted_yield: number;
-      previous_yield: number;
-      yield_change: number;
-      yield_change_percent: number;
-      status: string;
-    };
-    field_management: string[];
-    soil_recommendations: string[];
-    immediate_actions: string[];
-    seasonal_planning: string[];
-    risk_alerts: string[];
-  };
-}
+import { FarmAPI } from '../services/farmApi';
+import { heatmapService } from '../services/fileDatabase'; // kept for guest mode (localStorage)
+import type { HeatmapData } from '../types/farm';
 
 export interface UseHeatmapReturn {
   heatmapData: HeatmapData | null;
@@ -81,12 +24,30 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
     if (farmId) {
       const loadCachedData = async () => {
         try {
-          const cached = await heatmapService.getByFarmId(farmId);
-          if (cached) {
-            setHeatmapData(cached.data);
-            setIsCached(true);
-            setCachedAt(cached.cachedAt);
-            console.log('📦 Loaded cached heatmap data for farm:', farmId);
+          const isAuthenticated = !!(
+            typeof window !== 'undefined' &&
+            localStorage.getItem('auth_token') &&
+            localStorage.getItem('auth_user')
+          );
+
+          if (isAuthenticated) {
+            // Load from MongoDB via backend
+            const cached = await FarmAPI.getHeatmapCache(farmId);
+            if (cached) {
+              setHeatmapData(cached.data);
+              setIsCached(true);
+              setCachedAt(cached.cachedAt);
+              console.log('📦 Loaded heatmap cache from MongoDB for farm:', farmId);
+            }
+          } else {
+            // Guest mode: fall back to localStorage
+            const cached = await heatmapService.getByFarmId(farmId);
+            if (cached) {
+              setHeatmapData(cached.data);
+              setIsCached(true);
+              setCachedAt(cached.cachedAt);
+              console.log('📦 Loaded heatmap cache from localStorage (guest) for farm:', farmId);
+            }
           }
         } catch (err) {
           console.error('Error loading cached heatmap data:', err);
@@ -126,9 +87,23 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
       // Cache the data if farmId is provided
       if (farmId) {
         try {
-          const cachedEntry = await heatmapService.save(farmId, data);
-          console.log('💾 Heatmap data cached for farm:', farmId);
-          setCachedAt(cachedEntry.cachedAt);
+          const isAuthenticated = !!(
+            typeof window !== 'undefined' &&
+            localStorage.getItem('auth_token') &&
+            localStorage.getItem('auth_user')
+          );
+
+          if (isAuthenticated) {
+            // Save to MongoDB via backend
+            const savedAt = await FarmAPI.saveHeatmapCache(farmId, data);
+            console.log('💾 Heatmap data saved to MongoDB for farm:', farmId);
+            setCachedAt(savedAt);
+          } else {
+            // Guest mode: save to localStorage
+            const cachedEntry = await heatmapService.save(farmId, data);
+            console.log('💾 Heatmap data cached in localStorage (guest) for farm:', farmId);
+            setCachedAt(cachedEntry.cachedAt);
+          }
         } catch (cacheErr) {
           console.error('Error caching heatmap data:', cacheErr);
         }

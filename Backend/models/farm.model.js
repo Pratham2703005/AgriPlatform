@@ -53,6 +53,16 @@ coordinates: {
       ref: 'User',
       required: true,
     },
+    heatmapCache: {
+      data: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
+      cachedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt

@@ -12,6 +12,12 @@ router.get("/all", farmController.getAllFarms);
 // GET /farms - Get all farms for authenticated user (with pagination)
 router.get("/", farmController.getFarms);
 
+// GET /farms/:id/heatmap - Get cached heatmap data for a farm
+router.get("/:id/heatmap", farmController.getHeatmap);
+
+// POST /farms/:id/heatmap - Save heatmap data for a farm
+router.post("/:id/heatmap", farmController.saveHeatmap);
+
 // GET /farms/:id - Get specific farm by ID
 router.get("/:id", farmController.getFarm);
 
