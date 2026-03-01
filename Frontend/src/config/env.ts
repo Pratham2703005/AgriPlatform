@@ -77,7 +77,7 @@ export const env: EnvironmentConfig = {
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 
     (import.meta.env.MODE === 'production' 
       ? 'https://CropLab.onrender.com' 
-      : 'http://localhost:8000'),
+      : 'http://localhost:8100'),
   API_TIMEOUT: getNumberEnvVar('VITE_API_TIMEOUT', 30000),
 
   // Map Configuration
