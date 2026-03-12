@@ -401,39 +401,130 @@ export default function FarmDetail() {
                         {activeLayer === 'ndvi' ? 'Field Health Visualization' : activeLayer === 'ndwi' ? 'NDWI Visualization' : 'NDRE Visualization'}
                       </h4>
                       {(() => {
-                        const maskSource =
-                          activeLayer === 'ndwi' ? heatmapData['ndwi-masks'] :
-                          activeLayer === 'ndre' ? heatmapData['ndre-masks'] :
-                          heatmapData.masks;
-                        if (!maskSource) return <p className="text-sm text-neutral-500">No mask data available for this layer.</p>;
-                        return (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="text-center">
-                              <h5 className="text-sm font-medium text-red-700 mb-2">Stressed Areas</h5>
-                              <img 
-                                src={`data:image/png;base64,${maskSource.red_mask_base64}`}
-                                alt="Red mask - stressed areas"
-                                className="w-full h-32 object-cover rounded-lg border"
-                              />
+                        if (activeLayer === 'ndvi') {
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="text-center">
+                                <h5 className="text-sm font-medium text-red-700 mb-2">Stressed Areas</h5>
+                                <img 
+                                  src={`data:image/png;base64,${heatmapData.masks.red_mask_base64}`}
+                                  alt="Red mask - stressed areas"
+                                  className="w-full h-32 object-cover rounded-lg border"
+                                />
+                              </div>
+                              <div className="text-center">
+                                <h5 className="text-sm font-medium text-yellow-700 mb-2">Moderate Health</h5>
+                                <img 
+                                  src={`data:image/png;base64,${heatmapData.masks.yellow_mask_base64}`}
+                                  alt="Yellow mask - moderate areas"
+                                  className="w-full h-32 object-cover rounded-lg border"
+                                />
+                              </div>
+                              <div className="text-center">
+                                <h5 className="text-sm font-medium text-green-700 mb-2">Healthy Areas</h5>
+                                <img 
+                                  src={`data:image/png;base64,${heatmapData.masks.green_mask_base64}`}
+                                  alt="Green mask - healthy areas"
+                                  className="w-full h-32 object-cover rounded-lg border"
+                                />
+                              </div>
                             </div>
-                            <div className="text-center">
-                              <h5 className="text-sm font-medium text-yellow-700 mb-2">Moderate Health</h5>
-                              <img 
-                                src={`data:image/png;base64,${maskSource.yellow_mask_base64}`}
-                                alt="Yellow mask - moderate areas"
-                                className="w-full h-32 object-cover rounded-lg border"
-                              />
+                          );
+                        } else if (activeLayer === 'ndwi') {
+                          const ndwiMasks = heatmapData['ndwi-masks'];
+                          if (!ndwiMasks) return <p className="text-sm text-neutral-500">No NDWI mask data available.</p>;
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              {ndwiMasks.brown_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#8B4513' }}>Very Low Water</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndwiMasks.brown_mask_base64}`}
+                                    alt="Brown mask - very low water"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
+                              {ndwiMasks.yellow_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium text-yellow-700 mb-2">Low Water</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndwiMasks.yellow_mask_base64}`}
+                                    alt="Yellow mask - low water"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
+                              {ndwiMasks.light_blue_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#87CEFA' }}>Moderate Water</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndwiMasks.light_blue_mask_base64}`}
+                                    alt="Light blue mask - moderate water"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
+                              {ndwiMasks.dark_blue_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#00008B' }}>High Water</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndwiMasks.dark_blue_mask_base64}`}
+                                    alt="Dark blue mask - high water"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
                             </div>
-                            <div className="text-center">
-                              <h5 className="text-sm font-medium text-green-700 mb-2">Healthy Areas</h5>
-                              <img 
-                                src={`data:image/png;base64,${maskSource.green_mask_base64}`}
-                                alt="Green mask - healthy areas"
-                                className="w-full h-32 object-cover rounded-lg border"
-                              />
+                          );
+                        } else {
+                          const ndreMasks = heatmapData['ndre-masks'];
+                          if (!ndreMasks) return <p className="text-sm text-neutral-500">No NDRE mask data available.</p>;
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              {ndreMasks.purple_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#800080' }}>Stressed Vegetation</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndreMasks.purple_mask_base64}`}
+                                    alt="Purple mask - stressed vegetation"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
+                              {ndreMasks.pink_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#FF69B4' }}>Moderate Stress</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndreMasks.pink_mask_base64}`}
+                                    alt="Pink mask - moderate stress"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
+                              {ndreMasks.light_green_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#90EE90' }}>Healthy</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndreMasks.light_green_mask_base64}`}
+                                    alt="Light green mask - healthy"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
+                              {ndreMasks.dark_green_mask_base64 && (
+                                <div className="text-center">
+                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#006400' }}>Very Healthy</h5>
+                                  <img 
+                                    src={`data:image/png;base64,${ndreMasks.dark_green_mask_base64}`}
+                                    alt="Dark green mask - very healthy"
+                                    className="w-full h-32 object-cover rounded-lg border"
+                                  />
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        );
+                          );
+                        }
                       })()}
                     </div>
 

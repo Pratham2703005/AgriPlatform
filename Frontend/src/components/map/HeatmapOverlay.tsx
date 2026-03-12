@@ -174,10 +174,10 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
         prev.map(mask => ({
           ...mask,
           base64Data:
-            mask.id === 'brown' ? ndwiData.brown_mask_base64 :
-            mask.id === 'yellow' ? ndwiData.yellow_mask_base64 :
-            mask.id === 'light_blue' ? ndwiData.light_blue_mask_base64 :
-            mask.id === 'dark_blue' ? ndwiData.dark_blue_mask_base64 :
+            mask.id === 'brown' ? (ndwiData.brown_mask_base64 ?? '') :
+            mask.id === 'yellow' ? (ndwiData.yellow_mask_base64 ?? '') :
+            mask.id === 'light_blue' ? (ndwiData.light_blue_mask_base64 ?? '') :
+            mask.id === 'dark_blue' ? (ndwiData.dark_blue_mask_base64 ?? '') :
             mask.base64Data,
         })),
       );
@@ -190,10 +190,10 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
         prev.map(mask => ({
           ...mask,
           base64Data:
-            mask.id === 'purple' ? ndreData.purple_mask_base64 :
-            mask.id === 'pink' ? ndreData.pink_mask_base64 :
-            mask.id === 'light_green' ? ndreData.light_green_mask_base64 :
-            mask.id === 'dark_green' ? ndreData.dark_green_mask_base64 :
+            mask.id === 'purple' ? (ndreData.purple_mask_base64 ?? '') :
+            mask.id === 'pink' ? (ndreData.pink_mask_base64 ?? '') :
+            mask.id === 'light_green' ? (ndreData.light_green_mask_base64 ?? '') :
+            mask.id === 'dark_green' ? (ndreData.dark_green_mask_base64 ?? '') :
             mask.base64Data,
         })),
       );
@@ -545,7 +545,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
       )}
 
       {/* Cache Status Indicator */}
-      {isCached && cachedAt && (
+      {/* {isCached && cachedAt && (
         <div className="absolute bottom-3 right-3 z-[999] bg-blue-50 border border-blue-200 rounded-lg p-3 max-w-xs shadow-md">
           <div className="flex items-start space-x-2">
             <div className="text-blue-600 mt-0.5">
@@ -560,8 +560,8 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
               </p>
             </div>
           </div>
-        </div>
-      )}
+        </div> */}
+      {/* )} */}
     </div>
   );
 };

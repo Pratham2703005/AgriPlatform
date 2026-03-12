@@ -92,16 +92,18 @@ export interface HeatmapData {
     yellow_mask_base64: string;
     green_mask_base64: string;
   };
-  'ndwi-masks'?: {
-    red_mask_base64: string;
+  'ndwi-masks'?: Partial<{
+    brown_mask_base64: string;
     yellow_mask_base64: string;
-    green_mask_base64: string;
-  };
-  'ndre-masks'?: {
-    red_mask_base64: string;
-    yellow_mask_base64: string;
-    green_mask_base64: string;
-  };
+    light_blue_mask_base64: string;
+    dark_blue_mask_base64: string;
+  }>;
+  'ndre-masks'?: Partial<{
+    purple_mask_base64: string;
+    pink_mask_base64: string;
+    light_green_mask_base64: string;
+    dark_green_mask_base64: string;
+  }>;
   pixel_counts: {
     valid: number;
     red: number;
