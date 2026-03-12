@@ -400,7 +400,7 @@ const getHeatmap = async (req, res) => {
     if (!farm.heatmapCache || !farm.heatmapCache.data) {
       return res.status(404).json(new ResponseEntity(0, "No heatmap cache found", {}));
     }
-
+    console.log("Response bhej rha hu: ", farm.heatmapCache.data);
     return res.status(200).json(
       new ResponseEntity(1, "Heatmap cache retrieved", {
         data: farm.heatmapCache.data,
@@ -435,7 +435,7 @@ const saveHeatmap = async (req, res) => {
     const cachedAt = new Date();
     farm.heatmapCache = { data, cachedAt };
     await farm.save();
-
+    console.log("save kr rha hu, heatmap ko");
     return res.status(200).json(
       new ResponseEntity(1, "Heatmap data saved successfully", {
         cachedAt: cachedAt.toISOString(),

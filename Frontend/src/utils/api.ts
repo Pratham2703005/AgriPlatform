@@ -99,7 +99,14 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   config: Partial<RequestConfig> = {}
 ): Promise<T> {
-  const fullConfig = { ...DEFAULT_CONFIG, ...config };
+  const fullConfig = {
+    ...DEFAULT_CONFIG,
+    ...config,
+    headers: {
+      ...DEFAULT_CONFIG.headers,
+      ...config.headers,
+    },
+  };
   const url = `${env.API_BASE_URL}${endpoint}`;
 
   try {
