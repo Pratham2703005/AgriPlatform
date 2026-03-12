@@ -72,7 +72,7 @@ export const useHeatmap = () => {
     
     try {
       // Call the FastAPI endpoint directly
-      const response = await fetch('http://127.0.0.1:8100/generate_heatmap', {
+      const response = await fetch('http://127.0.0.1:8000/generate_heatmap', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
