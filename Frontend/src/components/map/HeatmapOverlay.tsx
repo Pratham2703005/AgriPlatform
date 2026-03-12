@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Polygon, ScaleControl, ImageOverlay } from 'react-leaflet';
 import L from 'leaflet';
 import { Layers, ZoomIn, ZoomOut, RotateCcw, LocateFixed, Settings, Eye, EyeOff } from 'lucide-react';
-import type { HeatmapData } from '../../hooks/useHeatmap';
+import type { HeatmapData } from '@/types/farm';
 import 'leaflet/dist/leaflet.css';
 import './HeatmapOverlay.css';
 
