@@ -11,6 +11,66 @@ export interface UseHeatmapReturn {
   cachedAt: string | null;
   fetchHeatmapData: (coordinates: number[][], t1?: number, t2?: number) => Promise<void>;
 }
+export interface HeatmapData {
+  predicted_yield: number;
+  old_yield: number;
+  growth: {
+    ratio: number;
+    percentage: number;
+  };
+  location: {
+    district: string;
+    coordinates: {
+      latitude: number;
+      longitude: number;
+    };
+    complete_address: string;
+  };
+  ndvi_shape: number[];
+  sensor_shape: number[];
+  masks: {
+    red_mask_base64: string;
+    yellow_mask_base64: string;
+    green_mask_base64: string;
+  };
+  "ndwi-masks": {
+    brown_mask_base64: string;
+    yellow_mask_base64: string;
+    light_blue_mask_base64: string;
+    dark_blue_mask_base64: string;
+  };
+  "ndre-masks": {
+    purple_mask_base64: string;
+    pink_mask_base64: string;
+    light_green_mask_base64: string;
+    dark_green_mask_base64: string;
+  };
+  pixel_counts: {
+    valid: number;
+    red: number;
+    yellow: number;
+    green: number;
+  };
+  thresholds: {
+    t1: number;
+    t2: number;
+  };
+  suggestions: {
+    overall_assessment: string;
+    yield_analysis: {
+      predicted_yield: number;
+      previous_yield: number;
+      yield_change: number;
+      yield_change_percent: number;
+      status: string;
+    };
+    field_management: string[];
+    soil_recommendations: string[];
+    immediate_actions: string[];
+    seasonal_planning: string[];
+    risk_alerts: string[];
+  };
+}
 
 export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
   const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);

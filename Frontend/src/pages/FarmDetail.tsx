@@ -6,6 +6,7 @@ import { useHeatmap } from '../hooks/useHeatmap';
 import { useWeatherCalendar } from '../hooks/useWeatherCalendar';
 import { FarmWeatherCalendar } from '../components/FarmWeatherCalendar';
 import { HeatmapOverlay } from '../components/map/HeatmapOverlay';
+import type { LayerType } from '../components/map/HeatmapOverlay';
 import { ArrowLeft, Sprout, Edit, Trash2, Download, FileText, Map, Lock, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
 import { useEffect } from 'react';
 import { formatHectares } from '@/utils';
@@ -16,10 +17,11 @@ export default function FarmDetail() {
   const navigate = useNavigate();
   const { user, isGuestMode } = useAuth();
   const { getFarmById, deleteFarm, loading, farms } = useFarms();
-  const { heatmapData, loading: heatmapLoading, error: heatmapError, fetchHeatmapData, isCached, cachedAt } = useHeatmap(id);
+  const { heatmapData, loading: heatmapLoading, error: heatmapError, fetchHeatmapData } = useHeatmap(id);
   const { calendarData, loading: calendarLoading, fetchCalendar } = useWeatherCalendar();
   const [farm, setFarm] = React.useState<Farm | null>(null);
   const [hasInitiallyFetchedHeatmap, setHasInitiallyFetchedHeatmap] = React.useState(false);
+  const [activeLayer, setActiveLayer] = React.useState<LayerType>('ndvi');
 
   // Set farm when farms are loaded
   useEffect(() => {
@@ -280,8 +282,8 @@ export default function FarmDetail() {
                     heatmapData={heatmapData}
                     height="600px"
                     className="w-full"
-                    isCached={isCached}
-                    cachedAt={cachedAt}
+                    activeLayer={activeLayer}
+                    onLayerChange={setActiveLayer}
                   />
                 </div>
               </div>
@@ -393,35 +395,46 @@ export default function FarmDetail() {
                       </div>
                     </div>
 
-                    {/* Heatmap Masks */}
+                    {/* Heatmap Masks — reacts to active layer */}
                     <div className="mb-6">
-                      <h4 className="font-semibold text-neutral-900 mb-4">Field Health Visualization</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center">
-                          <h5 className="text-sm font-medium text-red-700 mb-2">Stressed Areas</h5>
-                          <img 
-                            src={`data:image/png;base64,${heatmapData.masks.red_mask_base64}`}
-                            alt="Red mask - stressed areas"
-                            className="w-full h-32 object-cover rounded-lg border"
-                          />
-                        </div>
-                        <div className="text-center">
-                          <h5 className="text-sm font-medium text-yellow-700 mb-2">Moderate Health</h5>
-                          <img 
-                            src={`data:image/png;base64,${heatmapData.masks.yellow_mask_base64}`}
-                            alt="Yellow mask - moderate areas"
-                            className="w-full h-32 object-cover rounded-lg border"
-                          />
-                        </div>
-                        <div className="text-center">
-                          <h5 className="text-sm font-medium text-green-700 mb-2">Healthy Areas</h5>
-                          <img 
-                            src={`data:image/png;base64,${heatmapData.masks.green_mask_base64}`}
-                            alt="Green mask - healthy areas"
-                            className="w-full h-32 object-cover rounded-lg border"
-                          />
-                        </div>
-                      </div>
+                      <h4 className="font-semibold text-neutral-900 mb-4">
+                        {activeLayer === 'ndvi' ? 'Field Health Visualization' : activeLayer === 'ndwi' ? 'NDWI Visualization' : 'NDRE Visualization'}
+                      </h4>
+                      {(() => {
+                        const maskSource =
+                          activeLayer === 'ndwi' ? heatmapData['ndwi-masks'] :
+                          activeLayer === 'ndre' ? heatmapData['ndre-masks'] :
+                          heatmapData.masks;
+                        if (!maskSource) return <p className="text-sm text-neutral-500">No mask data available for this layer.</p>;
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center">
+                              <h5 className="text-sm font-medium text-red-700 mb-2">Stressed Areas</h5>
+                              <img 
+                                src={`data:image/png;base64,${maskSource.red_mask_base64}`}
+                                alt="Red mask - stressed areas"
+                                className="w-full h-32 object-cover rounded-lg border"
+                              />
+                            </div>
+                            <div className="text-center">
+                              <h5 className="text-sm font-medium text-yellow-700 mb-2">Moderate Health</h5>
+                              <img 
+                                src={`data:image/png;base64,${maskSource.yellow_mask_base64}`}
+                                alt="Yellow mask - moderate areas"
+                                className="w-full h-32 object-cover rounded-lg border"
+                              />
+                            </div>
+                            <div className="text-center">
+                              <h5 className="text-sm font-medium text-green-700 mb-2">Healthy Areas</h5>
+                              <img 
+                                src={`data:image/png;base64,${maskSource.green_mask_base64}`}
+                                alt="Green mask - healthy areas"
+                                className="w-full h-32 object-cover rounded-lg border"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Recommendations */}
