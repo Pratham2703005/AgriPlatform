@@ -9,7 +9,7 @@ export interface UseHeatmapReturn {
   error: string | null;
   isCached: boolean;
   cachedAt: string | null;
-  fetchHeatmapData: (coordinates: number[][], t1?: number, t2?: number) => Promise<void>;
+  fetchHeatmapData: (coordinates: number[][], t1?: number, t2?: number, cultivation_date?: string, harvest_date?: string) => Promise<void>;
 }
 
 export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
@@ -57,7 +57,7 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
     }
   }, [farmId]);
 
-  const fetchHeatmapData = useCallback(async (coordinates: number[][], t1: number = 0.5, t2: number = 0.75) => {
+  const fetchHeatmapData = useCallback(async (coordinates: number[][], t1: number = 0.5, t2: number = 0.75, cultivation_date?: string, harvest_date?: string) => {
     setLoading(true);
     setError(null);
     
@@ -71,7 +71,9 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
         body: JSON.stringify({
           coordinates: coordinates,
           t1: t1,
-          t2: t2
+          t2: t2,
+          ...(cultivation_date && { cultivation_date }),
+          ...(harvest_date && { harvest_date })
         }),
       });
 

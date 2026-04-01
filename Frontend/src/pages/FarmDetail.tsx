@@ -54,7 +54,7 @@ export default function FarmDetail() {
       // Convert coordinates to the format expected by the API
       const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
       if (coordinates.length > 0) {
-        fetchHeatmapData(coordinates, 0.5, 0.75);
+        fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate);
         setHasInitiallyFetchedHeatmap(true);
       }
     }
@@ -313,7 +313,7 @@ export default function FarmDetail() {
                           if (farm && farm.coordinates && farm.coordinates.length > 0) {
                             const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
                             if (coordinates.length > 0) {
-                              fetchHeatmapData(coordinates, 0.5, 0.75);
+                              fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate);
                             }
                           }
                         }}
@@ -593,7 +593,7 @@ export default function FarmDetail() {
                         if (farm && farm.coordinates && farm.coordinates.length > 0) {
                           const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
                           if (coordinates.length > 0) {
-                            fetchHeatmapData(coordinates, 0.5, 0.75);
+                            fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate);
                           }
                         }
                       }}
@@ -619,7 +619,7 @@ export default function FarmDetail() {
                         if (farm && farm.coordinates && farm.coordinates.length > 0) {
                           const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
                           if (coordinates.length > 0) {
-                            fetchHeatmapData(coordinates, 0.5, 0.75);
+                            fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate);
                           }
                         }
                       }}
