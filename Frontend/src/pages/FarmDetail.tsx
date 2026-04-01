@@ -465,16 +465,6 @@ export default function FarmDetail() {
                                   />
                                 </div>
                               )}
-                              {ndwiMasks.dark_blue_mask_base64 && (
-                                <div className="text-center">
-                                  <h5 className="text-sm font-medium mb-2" style={{ color: '#00008B' }}>High Water</h5>
-                                  <img 
-                                    src={`data:image/png;base64,${ndwiMasks.dark_blue_mask_base64}`}
-                                    alt="Dark blue mask - high water"
-                                    className="w-full h-32 object-cover rounded-lg border"
-                                  />
-                                </div>
-                              )}
                             </div>
                           );
                         } else {

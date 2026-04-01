@@ -96,7 +96,6 @@ export interface HeatmapData {
     brown_mask_base64: string;
     yellow_mask_base64: string;
     light_blue_mask_base64: string;
-    dark_blue_mask_base64: string;
   }>;
   'ndre-masks'?: Partial<{
     purple_mask_base64: string;

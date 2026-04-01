@@ -48,12 +48,11 @@ const createNdviMaskSet = (): MaskOverlay[] => [
   { id: 'green', name: 'Healthy Areas', color: '#22c55e', base64Data: '', opacity: 0.7, visible: true },
 ];
 
-// NDWI mask set (brown -> yellow -> light blue -> dark blue)
+// NDWI mask set (brown -> yellow -> light blue)
 const createNdwiMaskSet = (): MaskOverlay[] => [
   { id: 'brown', name: 'Very Low Water', color: '#8B4513', base64Data: '', opacity: 0.7, visible: true },
   { id: 'yellow', name: 'Low Water', color: '#eab308', base64Data: '', opacity: 0.7, visible: true },
   { id: 'light_blue', name: 'Moderate Water', color: '#87CEFA', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'dark_blue', name: 'High Water', color: '#00008B', base64Data: '', opacity: 0.7, visible: true },
 ];
 
 // NDRE mask set (purple -> pink -> light green -> dark green)
@@ -167,7 +166,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
       );
     }
 
-    // NDWI masks (brown, yellow, light_blue, dark_blue)
+    // NDWI masks (brown, yellow, light_blue)
     if (heatmapData['ndwi-masks']) {
       const ndwiData = heatmapData['ndwi-masks'];
       setNdwiMasks(prev =>
@@ -177,7 +176,6 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
             mask.id === 'brown' ? (ndwiData.brown_mask_base64 ?? '') :
             mask.id === 'yellow' ? (ndwiData.yellow_mask_base64 ?? '') :
             mask.id === 'light_blue' ? (ndwiData.light_blue_mask_base64 ?? '') :
-            mask.id === 'dark_blue' ? (ndwiData.dark_blue_mask_base64 ?? '') :
             mask.base64Data,
         })),
       );
