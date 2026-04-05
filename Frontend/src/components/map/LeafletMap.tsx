@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, useMapEvents, ScaleControl, Rectangle } from 'react-leaflet';
+import { MapContainer, TileLayer, useMapEvents, ScaleControl, Rectangle, Polygon, Polyline, CircleMarker } from 'react-leaflet';
 import L, { type LeafletMouseEvent } from 'leaflet';
-import { Square, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed } from 'lucide-react';
+import { Square, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed, RectangleHorizontal, Pentagon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import './map.css';
@@ -16,6 +16,8 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+type DrawMode = 'none' | 'square' | 'rectangle' | 'polygon';
+
 interface LeafletMapProps {
   onPolygonComplete?: (coordinates: number[][], area: number) => void;
   initialCoordinates?: number[][];
@@ -23,152 +25,228 @@ interface LeafletMapProps {
   className?: string;
 }
 
-// Maximum allowed area in hectares (100 km² = 10,000 hectares) - currently unused
-// const MAX_AREA_HECTARES = parseInt(import.meta.env.VITE_MAX_AREA_HECTARES  || "10000");
+// Calculate area in hectares from [lng, lat] coordinates using the Shoelace formula
+const calculateAreaHectares = (coords: number[][]): number => {
+  if (coords.length < 3) return 0;
+  let area = 0;
+  const n = coords.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += coords[i][0] * coords[j][1];
+    area -= coords[j][0] * coords[i][1];
+  }
+  area = Math.abs(area) / 2;
+  // Average lat for longitude scaling
+  const avgLat = coords.reduce((s, c) => s + c[1], 0) / n;
+  const metersPerDegreeLat = 111320;
+  const metersPerDegreeLng = 111320 * Math.cos(avgLat * Math.PI / 180);
+  return (area * metersPerDegreeLat * metersPerDegreeLng) / 10000;
+};
+
+// --- Drawing handler component ---
 interface DrawingControlsProps {
-  onPolygonComplete: ((coordinates: number[][], area: number) => void) | undefined;
-  // Square control props
-  isSquareMode: boolean;
-  setIsSquareMode: (mode: boolean) => void;
-  squareBounds: [[number, number], [number, number]] | null;
+  drawMode: DrawMode;
+  setDrawMode: (mode: DrawMode) => void;
+  onShapeComplete: (coordinates: number[][], area: number) => void;
+  // Square
   setSquareBounds: (bounds: [[number, number], [number, number]] | null) => void;
-  onSquareComplete: (coordinates: number[][], area: number) => void;
+  // Rectangle
+  rectStart: [number, number] | null;
+  setRectStart: (p: [number, number] | null) => void;
+  setRectEnd: (p: [number, number] | null) => void;
+  // Polygon
+  polygonPoints: [number, number][];
+  setPolygonPoints: (pts: [number, number][]) => void;
 }
 
 const DrawingControls: React.FC<DrawingControlsProps> = ({
-  // onPolygonComplete - keeping for future functionality
-  // Square control props
-  isSquareMode,
-  setIsSquareMode,
-  // squareBounds - keeping for future functionality
+  drawMode,
+  setDrawMode,
+  onShapeComplete,
   setSquareBounds,
-  onSquareComplete
+  rectStart,
+  setRectStart,
+  setRectEnd,
+  polygonPoints,
+  setPolygonPoints,
 }) => {
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useMapEvents({
     click: (e: LeafletMouseEvent) => {
-      if (isSquareMode) {
-        // Create a 10km² square centered at the clicked location
+      if (drawMode === 'square') {
         const centerLat = e.latlng.lat;
         const centerLng = e.latlng.lng;
-        const sideLengthKm = Math.sqrt(10); // ~3.162 km per side for 10 km²
-        
-        // Latitude: 1 degree ≈ 111.32 km (constant everywhere)
+        const sideLengthKm = Math.sqrt(10);
         const latDegreesPerKm = 1 / 111.32;
-        
-        // Longitude: varies by latitude
-        // At latitude φ, 1 degree longitude = 111.32 * cos(φ) km
         const lngDegreesPerKm = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
-        
-        // Calculate offsets for each dimension
         const latOffset = (sideLengthKm / 2) * latDegreesPerKm;
         const lngOffset = (sideLengthKm / 2) * lngDegreesPerKm;
-        
-        // Create bounds [southWest, northEast]
         const bounds: [[number, number], [number, number]] = [
-          [centerLat - latOffset, centerLng - lngOffset], // South-West
-          [centerLat + latOffset, centerLng + lngOffset]  // North-East
+          [centerLat - latOffset, centerLng - lngOffset],
+          [centerLat + latOffset, centerLng + lngOffset],
         ];
-        
         setSquareBounds(bounds);
-        setIsSquareMode(false);
-        
-        // Notify parent of square completion
-        // Convert bounds to polygon coordinates format [lng, lat]
+        setDrawMode('none');
         const squareCoords = [
-          [bounds[0][1], bounds[0][0]], // SW
-          [bounds[1][1], bounds[0][0]], // SE
-          [bounds[1][1], bounds[1][0]], // NE
-          [bounds[0][1], bounds[1][0]], // NW
-          [bounds[0][1], bounds[0][0]]  // Close polygon
+          [bounds[0][1], bounds[0][0]],
+          [bounds[1][1], bounds[0][0]],
+          [bounds[1][1], bounds[1][0]],
+          [bounds[0][1], bounds[1][0]],
+          [bounds[0][1], bounds[0][0]],
         ];
-        onSquareComplete(squareCoords, 1000); // 10km² = 1000 hectares
+        onShapeComplete(squareCoords, 1000);
+      } else if (drawMode === 'rectangle') {
+        if (!rectStart) {
+          setRectStart([e.latlng.lat, e.latlng.lng]);
+        } else {
+          const end: [number, number] = [e.latlng.lat, e.latlng.lng];
+          setRectEnd(end);
+          setDrawMode('none');
+          const coords = [
+            [rectStart[1], rectStart[0]],
+            [end[1], rectStart[0]],
+            [end[1], end[0]],
+            [rectStart[1], end[0]],
+            [rectStart[1], rectStart[0]],
+          ];
+          const area = calculateAreaHectares(coords);
+          onShapeComplete(coords, Math.round(area * 100) / 100);
+        }
+      } else if (drawMode === 'polygon') {
+        // Debounce click to avoid adding points on double-click
+        if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+        const point: [number, number] = [e.latlng.lat, e.latlng.lng];
+        clickTimerRef.current = setTimeout(() => {
+          setPolygonPoints([...polygonPoints, point]);
+        }, 250);
       }
-    }
+    },
+    mousemove: (e: LeafletMouseEvent) => {
+      if (drawMode === 'rectangle' && rectStart) {
+        setRectEnd([e.latlng.lat, e.latlng.lng]);
+      }
+    },
+    dblclick: (e: LeafletMouseEvent) => {
+      if (drawMode === 'polygon') {
+        // Cancel the pending click so no extra point is added
+        if (clickTimerRef.current) {
+          clearTimeout(clickTimerRef.current);
+          clickTimerRef.current = null;
+        }
+        L.DomEvent.stopPropagation(e);
+        L.DomEvent.preventDefault(e);
+        if (polygonPoints.length >= 3) {
+          const closed = [...polygonPoints, polygonPoints[0]];
+          const coords = closed.map((p) => [p[1], p[0]]);
+          const area = calculateAreaHectares(coords);
+          setDrawMode('none');
+          onShapeComplete(coords, Math.round(area * 100) / 100);
+        }
+      }
+    },
   });
 
   return null;
 };
 
-
-
 export const LeafletMap: React.FC<LeafletMapProps> = ({
   onPolygonComplete,
   initialCoordinates = [],
   height = '400px',
-  className = ''
+  className = '',
 }) => {
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
-  // Square control state
-  const [isSquareMode, setIsSquareMode] = useState(false);
+  const [drawMode, setDrawMode] = useState<DrawMode>('none');
+
+  // Shape state
   const [squareBounds, setSquareBounds] = useState<[[number, number], [number, number]] | null>(null);
+  const [rectStart, setRectStart] = useState<[number, number] | null>(null);
+  const [rectEnd, setRectEnd] = useState<[number, number] | null>(null);
+  const [rectBounds, setRectBounds] = useState<[[number, number], [number, number]] | null>(null);
+  const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
+  const [completedPolygon, setCompletedPolygon] = useState<[number, number][] | null>(null);
+
+  // Result state
+  const [shapeInfo, setShapeInfo] = useState<{ label: string; area: number } | null>(null);
+
   const mapRef = useRef<L.Map | null>(null);
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
-  // Convert initial coordinates if provided - currently unused but kept for future functionality
   useEffect(() => {
     if (initialCoordinates.length > 0) {
-      // Future: Display initial polygon coordinates on map
       console.log('Initial coordinates provided:', initialCoordinates);
     }
   }, [initialCoordinates]);
 
+  // Clear all shapes
+  const clearShapes = () => {
+    setSquareBounds(null);
+    setRectStart(null);
+    setRectEnd(null);
+    setRectBounds(null);
+    setPolygonPoints([]);
+    setCompletedPolygon(null);
+    setShapeInfo(null);
+  };
 
-
-  // Function to handle square mode
-  const handleSquareMode = () => {
-    setIsSquareMode(!isSquareMode);
+  const activateMode = (mode: DrawMode) => {
+    clearShapes();
+    setDrawMode(mode === drawMode ? 'none' : mode);
     setShowStyleSelector(false);
   };
 
-
-
-  const handleZoomIn = () => {
-    if (mapRef.current) {
-      mapRef.current.zoomIn();
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (mapRef.current) {
-      mapRef.current.zoomOut();
-    }
-  };
-
-  const handleResetView = () => {
-    if (mapRef.current) {
-      mapRef.current.setView(defaultCenter, Number(import.meta.env.VITE_MAP_DEFAULT_ZOOM) || 10);
-    }
-  };
-
- const handleLocateMe = () => {
-  const map = mapRef.current;
-  if (!map) return;
-
-  if (!navigator.geolocation) return;
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude, longitude } = pos.coords;
-      map.flyTo([latitude, longitude], 16, {
-        animate: true,
-        duration: 2 // seconds
-      });
+  const handleShapeComplete = useCallback(
+    (coords: number[][], area: number) => {
+      setShapeInfo({ label: drawMode === 'square' ? '10km² Square' : drawMode === 'rectangle' ? 'Rectangle' : 'Polygon', area });
+      onPolygonComplete?.(coords, area);
     },
-    () => {
-      // Ignore errors silently
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
+    [onPolygonComplete, drawMode]
   );
-};
 
+  // When rectangle completes, persist bounds
+  const handleRectEnd = (end: [number, number] | null) => {
+    setRectEnd(end);
+    if (end && rectStart) {
+      setRectBounds([
+        [Math.min(rectStart[0], end[0]), Math.min(rectStart[1], end[1])],
+        [Math.max(rectStart[0], end[0]), Math.max(rectStart[1], end[1])],
+      ]);
+    }
+  };
 
+  // When polygon completes
+  const handlePolygonComplete = useCallback(
+    (coords: number[][], area: number) => {
+      const leafletPts: [number, number][] = coords.map((c) => [c[1], c[0]]);
+      setCompletedPolygon(leafletPts);
+      setPolygonPoints([]);
+      setShapeInfo({ label: 'Polygon', area });
+      onPolygonComplete?.(coords, area);
+    },
+    [onPolygonComplete]
+  );
+
+  const handleZoomIn = () => mapRef.current?.zoomIn();
+  const handleZoomOut = () => mapRef.current?.zoomOut();
+  const handleResetView = () => {
+    mapRef.current?.setView(defaultCenter, Number(import.meta.env.VITE_MAP_DEFAULT_ZOOM) || 10);
+  };
+  const handleLocateMe = () => {
+    const map = mapRef.current;
+    if (!map || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => map.flyTo([pos.coords.latitude, pos.coords.longitude], 16, { animate: true, duration: 2 }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
   const handleStyleChange = (style: 'hybrid' | 'satellite' | 'streets') => {
     setMapStyle(style);
     setShowStyleSelector(false);
   };
 
-  // Map tile URLs for different styles
   const mapStyles = {
     hybrid: `https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${MAP_API_KEY}`,
     satellite: `https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${MAP_API_KEY}`,
@@ -177,60 +255,116 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
   const defaultCenter: [number, number] = [
     Number(import.meta.env.VITE_MAP_DEFAULT_CENTER_LAT) || 28.6139,
-    Number(import.meta.env.VITE_MAP_DEFAULT_CENTER_LNG) || 77.2090
+    Number(import.meta.env.VITE_MAP_DEFAULT_CENTER_LNG) || 77.2090,
   ];
 
-  // Function to handle square completion
-  const handleSquareComplete = useCallback((coords: number[][], area: number) => {
-    if (onPolygonComplete) {
-      onPolygonComplete(coords, area);
-    }
-  }, [onPolygonComplete]);
+  // Live preview rectangle bounds
+  const previewRectBounds: [[number, number], [number, number]] | null =
+    drawMode === 'rectangle' && rectStart && rectEnd
+      ? [
+          [Math.min(rectStart[0], rectEnd[0]), Math.min(rectStart[1], rectEnd[1])],
+          [Math.max(rectStart[0], rectEnd[0]), Math.max(rectStart[1], rectEnd[1])],
+        ]
+      : null;
+
+  const modeLabels: Record<DrawMode, string> = {
+    none: '',
+    square: 'Square Placement',
+    rectangle: 'Rectangle Selection',
+    polygon: 'Polygon Drawing',
+  };
+
+  const modeInstructions: Record<DrawMode, string[]> = {
+    none: [],
+    square: ['Click anywhere on the map', 'A 10km² square will be placed'],
+    rectangle: ['Click to set the first corner', 'Click again to set the opposite corner'],
+    polygon: ['Click to add vertices', 'Double-click to complete the shape', 'Minimum 3 points required'],
+  };
 
   return (
     <div className={`relative ${className}`} style={{ zIndex: 1 }}>
-      {/* Map Container */}
-      <div style={{ height}} className="w-full rounded-lg overflow-hidden border border-neutral-200">
+      <div style={{ height }} className="w-full rounded-lg overflow-hidden border border-neutral-200">
         <MapContainer
           center={defaultCenter}
           zoom={Number(import.meta.env.VITE_MAP_DEFAULT_ZOOM) || 10}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
+          doubleClickZoom={false}
           ref={mapRef}
         >
-          {/* Base Layer - Dynamic based on selected style */}
           <TileLayer
             key={mapStyle}
             url={mapStyles[mapStyle]}
             attribution='&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
           />
-
-          {/* Scale Control - No zoom control */}
           <ScaleControl position="bottomleft" imperial={false} />
 
-          {/* Drawing Controls */}
           <DrawingControls
-            onPolygonComplete={onPolygonComplete}
-            // Square control props
-            isSquareMode={isSquareMode}
-            setIsSquareMode={setIsSquareMode}
-            squareBounds={squareBounds}
+            drawMode={drawMode}
+            setDrawMode={setDrawMode}
+            onShapeComplete={drawMode === 'polygon' ? handlePolygonComplete : handleShapeComplete}
             setSquareBounds={setSquareBounds}
-            onSquareComplete={handleSquareComplete}
+            rectStart={rectStart}
+            setRectStart={setRectStart}
+            setRectEnd={handleRectEnd}
+            polygonPoints={polygonPoints}
+            setPolygonPoints={setPolygonPoints}
           />
 
-
-
-          {/* Display square */}
+          {/* Square shape */}
           {squareBounds && (
             <Rectangle
               bounds={squareBounds}
-              pathOptions={{
-                color: '#3b82f6',
-                weight: 2,
-                fillOpacity: 0.2,
-                fillColor: '#3b82f6'
-              }}
+              pathOptions={{ color: '#3b82f6', weight: 2, fillOpacity: 0.2, fillColor: '#3b82f6' }}
+            />
+          )}
+
+          {/* Rectangle preview while drawing */}
+          {previewRectBounds && (
+            <Rectangle
+              bounds={previewRectBounds}
+              pathOptions={{ color: '#8b5cf6', weight: 2, fillOpacity: 0.15, fillColor: '#8b5cf6', dashArray: '6 4' }}
+            />
+          )}
+
+          {/* Completed rectangle */}
+          {rectBounds && drawMode === 'none' && (
+            <Rectangle
+              bounds={rectBounds}
+              pathOptions={{ color: '#8b5cf6', weight: 2, fillOpacity: 0.2, fillColor: '#8b5cf6' }}
+            />
+          )}
+
+          {/* Polygon preview while drawing */}
+          {drawMode === 'polygon' && polygonPoints.length > 0 && (
+            <>
+              {polygonPoints.length >= 3 ? (
+                <Polygon
+                  positions={polygonPoints}
+                  pathOptions={{ color: '#10b981', weight: 2, fillOpacity: 0.1, fillColor: '#10b981', dashArray: '6 4' }}
+                />
+              ) : (
+                <Polyline
+                  positions={polygonPoints}
+                  pathOptions={{ color: '#10b981', weight: 2, dashArray: '6 4' }}
+                />
+              )}
+              {polygonPoints.map((pt, i) => (
+                <CircleMarker
+                  key={i}
+                  center={pt}
+                  radius={5}
+                  pathOptions={{ color: '#fff', weight: 2, fillColor: '#10b981', fillOpacity: 1 }}
+                />
+              ))}
+            </>
+          )}
+
+          {/* Completed polygon */}
+          {completedPolygon && (
+            <Polygon
+              positions={completedPolygon}
+              pathOptions={{ color: '#10b981', weight: 2, fillOpacity: 0.2, fillColor: '#10b981' }}
             />
           )}
         </MapContainer>
@@ -239,58 +373,66 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       {/* Left Side Controls Panel */}
       <div className="absolute top-3 left-3 z-[1000] bg-white rounded-md shadow-lg border border-neutral-700">
         <div className="p-2 space-y-1.5">
-          {/* Square Control Button */}
+          {/* Square */}
           <button
             type="button"
-            onClick={handleSquareMode}
-            className={`w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group ${isSquareMode ? 'bg-gray-200' : ''}`}
+            onClick={() => activateMode('square')}
+            className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
+              drawMode === 'square' ? 'bg-blue-100 text-blue-600' : 'bg-white text-black hover:bg-gray-100'
+            }`}
             title="Add 10km² Square"
           >
             <Square className="h-4 w-4 group-hover:scale-110 transition-transform" />
           </button>
 
-          {/* Navigation Tools */}
+          {/* Rectangle */}
           <button
             type="button"
-            onClick={handleZoomIn}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="Zoom In"
+            onClick={() => activateMode('rectangle')}
+            className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
+              drawMode === 'rectangle' ? 'bg-violet-100 text-violet-600' : 'bg-white text-black hover:bg-gray-100'
+            }`}
+            title="Draw Rectangle"
           >
+            <RectangleHorizontal className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+
+          {/* Polygon */}
+          <button
+            type="button"
+            onClick={() => activateMode('polygon')}
+            className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
+              drawMode === 'polygon' ? 'bg-emerald-100 text-emerald-600' : 'bg-white text-black hover:bg-gray-100'
+            }`}
+            title="Draw Polygon"
+          >
+            <Pentagon className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          </button>
+
+          <div className="border-t border-neutral-200 my-1" />
+
+          {/* Navigation Tools */}
+          <button type="button" onClick={handleZoomIn} className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group" title="Zoom In">
             <ZoomIn className="h-4 w-4 group-hover:scale-110 transition-transform" />
           </button>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="Zoom Out"
-          >
+          <button type="button" onClick={handleZoomOut} className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group" title="Zoom Out">
             <ZoomOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
           </button>
-          <button
-            type="button"
-            onClick={handleResetView}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="Reset View"
-          >
+          <button type="button" onClick={handleResetView} className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group" title="Reset View">
             <RotateCcw className="h-4 w-4 group-hover:scale-110 transition-transform" />
           </button>
-          <button
-            type="button"
-            onClick={handleLocateMe}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="My Location"
-          >
+          <button type="button" onClick={handleLocateMe} className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group" title="My Location">
             <LocateFixed className="h-4 w-4 group-hover:scale-110 transition-transform" />
           </button>
+
+          <div className="border-t border-neutral-200 my-1" />
 
           {/* Map Style Toggle */}
           <button
             type="button"
             onClick={() => setShowStyleSelector(!showStyleSelector)}
             className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
-              showStyleSelector 
-                ? 'bg-gray-100 text-black' 
-                : 'bg-white text-black hover:bg-gray-100'
+              showStyleSelector ? 'bg-gray-100 text-black' : 'bg-white text-black hover:bg-gray-100'
             }`}
             title="Map Style"
           >
@@ -301,66 +443,43 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         {/* Map Style Selector */}
         {showStyleSelector && (
           <div className="absolute left-full top-0 ml-2 bg-white rounded-md shadow-lg border border-neutral-700 py-1 min-w-[100px]">
-            <button
-              type="button"
-              onClick={() => handleStyleChange('hybrid')}
-              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
-                mapStyle === 'hybrid' 
-                  ? 'bg-gray-100 text-black' 
-                  : 'bg-white text-black hover:bg-gray-100'
-              }`}
-            >
-              Hybrid
-            </button>
-            <button
-              type="button"
-              onClick={() => handleStyleChange('satellite')}
-              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
-                mapStyle === 'satellite' 
-                  ? 'bg-gray-100 text-black' 
-                  : 'bg-white text-black hover:bg-gray-100'
-              }`}
-            >
-              Satellite
-            </button>
-            <button
-              type="button"
-              onClick={() => handleStyleChange('streets')}
-              className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
-                mapStyle === 'streets' 
-                  ? 'bg-gray-100 text-black' 
-                  : 'bg-white text-black hover:bg-gray-100'
-              }`}
-            >
-              Streets
-            </button>
+            {(['hybrid', 'satellite', 'streets'] as const).map((style) => (
+              <button
+                key={style}
+                type="button"
+                onClick={() => handleStyleChange(style)}
+                className={`w-full px-3 py-1.5 text-xs text-left transition-colors capitalize ${
+                  mapStyle === style ? 'bg-gray-100 text-black' : 'bg-white text-black hover:bg-gray-100'
+                }`}
+              >
+                {style}
+              </button>
+            ))}
           </div>
         )}
       </div>
 
       {/* Status Display */}
-      {squareBounds && (
+      {shapeInfo && (
         <div className="absolute bottom-3 right-3 bg-white text-black px-3 py-2 rounded-md shadow-lg border border-neutral-700 text-sm z-[1000]">
-          <>
-            <div className="font-medium text-black">10km² Square</div>
-            <div className="font-medium text-emerald-400">
-              Area: 1000.0 ha
-            </div>
-          </>
+          <div className="font-medium text-black">{shapeInfo.label}</div>
+          <div className="font-medium text-emerald-400">Area: {shapeInfo.area.toFixed(1)} ha</div>
         </div>
       )}
 
       {/* Instructions */}
-      {isSquareMode && (
+      {drawMode !== 'none' && (
         <div className="absolute top-3 right-3 bg-white text-black px-4 py-3 rounded-md max-w-xs z-[1000] shadow-lg border border-neutral-700">
           <div className="font-medium mb-2 flex items-center text-black">
-            <Square className="h-4 w-4 mr-2 text-emerald-400" />
-            Square Placement Mode
+            {drawMode === 'square' && <Square className="h-4 w-4 mr-2 text-blue-500" />}
+            {drawMode === 'rectangle' && <RectangleHorizontal className="h-4 w-4 mr-2 text-violet-500" />}
+            {drawMode === 'polygon' && <Pentagon className="h-4 w-4 mr-2 text-emerald-500" />}
+            {modeLabels[drawMode]}
           </div>
           <div className="text-xs leading-relaxed text-black">
-            • Click anywhere on the map<br />
-            • A 10km² square will be placed<br />
-            • Square can be repositioned by enabling this mode again
+            {modeInstructions[drawMode].map((line, i) => (
+              <React.Fragment key={i}>• {line}<br /></React.Fragment>
+            ))}
           </div>
         </div>
       )}

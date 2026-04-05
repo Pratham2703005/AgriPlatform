@@ -103,6 +103,11 @@ export interface HeatmapData {
     light_green_mask_base64: string;
     dark_green_mask_base64: string;
   }>;
+  anomaly?: {
+    tile_urls?: {
+      anomaly_heatmap?: string;
+    };
+  };
   pixel_counts: {
     valid: number;
     red: number;
@@ -128,6 +133,13 @@ export interface HeatmapData {
     seasonal_planning: string[];
     risk_alerts: string[];
   };
+}
+
+export interface WeatherData {
+  date: string;
+  temperature?: number;
+  precipitation?: number;
+  weather_description?: string;
 }
 
 export const CROP_OPTIONS = [
