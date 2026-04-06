@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Home, Activity, TrendingUp, Cloud, Download } from 'lucide-react';
-import type { Farm, HeatmapData, WeatherData } from '@/types/farm';
+import { Home, Activity, TrendingUp, Cloud, Download, ChevronRight, ChevronLeft } from 'lucide-react';
+import type { Farm, HeatmapData } from '@/types/farm';
+import type { WeatherCalendarData } from '@/hooks/useWeatherCalendar';
 import { FarmInfoPanel } from './FarmInfoPanel';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { NDVITrendsPanel } from './NDVITrendsPanel';
-import { WeatherDataPanel } from './WeatherDataPanel';
+import { FarmWeatherCalendar } from '../FarmWeatherCalendar';
 import { ExportMapsPanel } from './ExportMapsPanel';
 
 type TabId = 'farm' | 'analysis' | 'trends' | 'weather' | 'export';
@@ -13,12 +14,14 @@ interface Tab {
   id: TabId;
   label: string;
   icon: React.ReactNode;
+  activeColor: string;
+  activeBg: string;
 }
 
 interface SidebarTabsProps {
   farm: Farm;
   heatmapData?: HeatmapData | null;
-  calendarData: WeatherData[];
+  weatherCalendarData?: WeatherCalendarData | null;
   canEdit: boolean;
   onDelete: () => void;
   onRefreshAnalysis: () => void;
@@ -32,17 +35,17 @@ interface SidebarTabsProps {
 }
 
 const TABS: Tab[] = [
-  { id: 'farm', label: 'Farm Info', icon: <Home className="h-4 w-4" /> },
-  { id: 'analysis', label: 'AI Analysis', icon: <Activity className="h-4 w-4" /> },
-  { id: 'trends', label: 'NDVI Trends', icon: <TrendingUp className="h-4 w-4" /> },
-  { id: 'weather', label: 'Weather', icon: <Cloud className="h-4 w-4" /> },
-  { id: 'export', label: 'Export', icon: <Download className="h-4 w-4" /> },
+  { id: 'farm', label: 'Farm Info', icon: <Home className="h-5 w-5" />, activeColor: 'text-primary-600', activeBg: 'bg-primary-50' },
+  { id: 'analysis', label: 'AI Analysis', icon: <Activity className="h-5 w-5" />, activeColor: 'text-violet-600', activeBg: 'bg-violet-50' },
+  { id: 'trends', label: 'NDVI Trends', icon: <TrendingUp className="h-5 w-5" />, activeColor: 'text-emerald-600', activeBg: 'bg-emerald-50' },
+  { id: 'weather', label: 'Weather', icon: <Cloud className="h-5 w-5" />, activeColor: 'text-sky-600', activeBg: 'bg-sky-50' },
+  { id: 'export', label: 'Export', icon: <Download className="h-5 w-5" />, activeColor: 'text-amber-600', activeBg: 'bg-amber-50' },
 ];
 
 export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   farm,
   heatmapData,
-  calendarData,
+  weatherCalendarData,
   canEdit,
   onDelete,
   onRefreshAnalysis,
@@ -54,85 +57,143 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   weatherLoading = false,
   exportLoading = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabId>('farm');
+  const [activeTab, setActiveTab] = useState<TabId | null>('farm');
+
+  const handleTabClick = (tabId: TabId) => {
+    setActiveTab(activeTab === tabId ? null : tabId);
+  };
+
+  const isOpen = activeTab !== null;
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Tab Navigation */}
-      <div className="border-b border-neutral-200 bg-white sticky top-0 z-10">
-        <div className="flex overflow-x-auto">
-          {TABS.map((tab) => (
+    <div className="flex h-full">
+      {/* Vertical Icon Strip */}
+      <div className="flex flex-col items-center bg-white py-3 px-1.5 space-y-1 z-10">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-max px-3 py-3 text-xs font-semibold transition-all whitespace-nowrap border-b-2 flex items-center justify-center space-x-1.5 ${
-                activeTab === tab.id
-                  ? 'border-primary-600 text-primary-600 bg-primary-50'
-                  : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-              }`}
+              onClick={() => handleTabClick(tab.id)}
+              title={tab.label}
+              className={`
+                relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 group
+                ${isActive
+                  ? `${tab.activeBg} ${tab.activeColor} shadow-sm`
+                  : 'border text-neutral-800 hover:text-neutral-700 hover:bg-gray-100'
+                }
+              `}
             >
               {tab.icon}
-              <span>{tab.label}</span>
+              {/* Active indicator dot */}
+              {isActive && (
+                <span className="absolute right-0.5 top-0.5 w-1.5 h-1.5 rounded-full bg-current" />
+              )}
+              {/* Tooltip */}
+              <span className="absolute right-full mr-2 px-2 py-1 text-xs font-medium text-white bg-neutral-800 rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity shadow-lg">
+                {tab.label}
+              </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Collapse/Expand toggle */}
+        <button
+          onClick={() => setActiveTab(isOpen ? null : 'farm')}
+          title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          className="w-10 h-10 rounded-lg flex items-center justify-center text-neutral-500 hover:text-white hover:bg-neutral-700/60 transition-all duration-200"
+        >
+          {isOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
       </div>
 
-      {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {activeTab === 'farm' && (
-          <FarmInfoPanel
-            farm={farm}
-            canEdit={canEdit}
-            onDelete={onDelete}
-          />
-        )}
+      {/* Sliding Panel */}
+      <div
+        className={`
+          bg-white overflow-hidden transition-all duration-300 ease-in-out
+          ${isOpen ? 'w-[310px] opacity-100' : 'w-0 opacity-0'}
+        `}
+      >
+        <div className="w-[310px] h-full flex flex-col overflow-hidden">
+          {/* Panel Header */}
+          {activeTab && (
+            <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50 flex-shrink-0">
+              <div className="flex items-center space-x-2">
+                {TABS.find(t => t.id === activeTab)?.icon}
+                <h3 className="text-sm font-bold text-neutral-900">
+                  {TABS.find(t => t.id === activeTab)?.label}
+                </h3>
+              </div>
+            </div>
+          )}
 
-        {activeTab === 'analysis' && heatmapData && (
-          <AIAnalysisPanel
-            heatmapData={heatmapData}
-            onRefresh={onRefreshAnalysis}
-            isLoading={analysisLoading}
-          />
-        )}
+          {/* Panel Content */}
+          <div className="flex-1 overflow-y-auto p-3">
+            {activeTab === 'farm' && (
+              <FarmInfoPanel
+                farm={farm}
+                canEdit={canEdit}
+                onDelete={onDelete}
+              />
+            )}
 
-        {activeTab === 'analysis' && !heatmapData && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Activity className="h-12 w-12 text-neutral-300 mb-3" />
-            <p className="text-sm text-neutral-600">Loading analysis data...</p>
+            {activeTab === 'analysis' && heatmapData && (
+              <AIAnalysisPanel
+                heatmapData={heatmapData}
+                onRefresh={onRefreshAnalysis}
+                isLoading={analysisLoading}
+              />
+            )}
+
+            {activeTab === 'analysis' && !heatmapData && (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Activity className="h-12 w-12 text-neutral-300 mb-3" />
+                <p className="text-sm text-neutral-600">Loading analysis data...</p>
+              </div>
+            )}
+
+            {activeTab === 'trends' && heatmapData && (
+              <NDVITrendsPanel heatmapData={heatmapData} />
+            )}
+
+            {activeTab === 'trends' && !heatmapData && (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <TrendingUp className="h-12 w-12 text-neutral-300 mb-3" />
+                <p className="text-sm text-neutral-600">Loading trend data...</p>
+              </div>
+            )}
+
+            {activeTab === 'weather' && weatherCalendarData && (
+              <FarmWeatherCalendar
+                calendarData={weatherCalendarData}
+                onRefresh={onRefreshWeather}
+                loading={weatherLoading}
+              />
+            )}
+
+            {activeTab === 'weather' && !weatherCalendarData && (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Cloud className="h-12 w-12 text-neutral-300 mb-3" />
+                <p className="text-sm text-neutral-600">
+                  {weatherLoading ? 'Loading weather data...' : 'No weather data available'}
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'export' && (
+              <ExportMapsPanel
+                farmName={farm.name}
+                onExportData={onExportData}
+                onGenerateReport={onGenerateReport}
+                onDownloadMap={onDownloadMap}
+                isLoading={exportLoading}
+              />
+            )}
           </div>
-        )}
-
-        {activeTab === 'trends' && heatmapData && (
-          <NDVITrendsPanel heatmapData={heatmapData} />
-        )}
-
-        {activeTab === 'trends' && !heatmapData && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <TrendingUp className="h-12 w-12 text-neutral-300 mb-3" />
-            <p className="text-sm text-neutral-600">Loading trend data...</p>
-          </div>
-        )}
-
-        {activeTab === 'weather' && (
-          <WeatherDataPanel
-            calendarData={calendarData}
-            plantingDate={farm.plantingDate}
-            harvestDate={farm.harvestDate}
-            onRefresh={onRefreshWeather}
-            isLoading={weatherLoading}
-          />
-        )}
-
-        {activeTab === 'export' && (
-          <ExportMapsPanel
-            farmName={farm.name}
-            onExportData={onExportData}
-            onGenerateReport={onGenerateReport}
-            onDownloadMap={onDownloadMap}
-            isLoading={exportLoading}
-          />
-        )}
+        </div>
       </div>
     </div>
   );

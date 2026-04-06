@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find \"/d/vs work/SIH/AgriProject/Frontend\" -name \"package.json\" -type f -exec head -100 {} \\\\;)"
+      "Bash(find \"/d/vs work/SIH/AgriProject/Frontend\" -name \"package.json\" -type f -exec head -100 {} \\\\;)",
+      "Bash(npx eslint:*)",
+      "Bash(node -e ':*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }

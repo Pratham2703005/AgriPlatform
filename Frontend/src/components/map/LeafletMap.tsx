@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, useMapEvents, ScaleControl, Rectangle, Polygon, Polyline, CircleMarker } from 'react-leaflet';
 import L, { type LeafletMouseEvent } from 'leaflet';
 import { Square, ZoomIn, ZoomOut, Layers, RotateCcw, LocateFixed, RectangleHorizontal, Pentagon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import './map.css';
-
 
 // Fix for default markers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,7 +19,6 @@ type DrawMode = 'none' | 'square' | 'rectangle' | 'polygon';
 
 interface LeafletMapProps {
   onPolygonComplete?: (coordinates: number[][], area: number) => void;
-  initialCoordinates?: number[][];
   height?: string;
   className?: string;
 }
@@ -32,12 +30,14 @@ const calculateAreaHectares = (coords: number[][]): number => {
   const n = coords.length;
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    area += coords[i][0] * coords[j][1];
-    area -= coords[j][0] * coords[i][1];
+    const ci = coords[i]!;
+    const cj = coords[j]!;
+    area += ci[0]! * cj[1]!;
+    area -= cj[0]! * ci[1]!;
   }
   area = Math.abs(area) / 2;
   // Average lat for longitude scaling
-  const avgLat = coords.reduce((s, c) => s + c[1], 0) / n;
+  const avgLat = coords.reduce((s, c) => s + (c[1] ?? 0), 0) / n;
   const metersPerDegreeLat = 111320;
   const metersPerDegreeLng = 111320 * Math.cos(avgLat * Math.PI / 180);
   return (area * metersPerDegreeLat * metersPerDegreeLng) / 10000;
@@ -47,7 +47,7 @@ const calculateAreaHectares = (coords: number[][]): number => {
 interface DrawingControlsProps {
   drawMode: DrawMode;
   setDrawMode: (mode: DrawMode) => void;
-  onShapeComplete: (coordinates: number[][], area: number) => void;
+  onShapeComplete: (coordinates: number[][], area: number, shapeType?: string) => void;
   // Square
   setSquareBounds: (bounds: [[number, number], [number, number]] | null) => void;
   // Rectangle
@@ -72,6 +72,14 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
 }) => {
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Use refs to avoid stale closures in map event handlers
+  const polygonPointsRef = useRef(polygonPoints);
+  polygonPointsRef.current = polygonPoints;
+  const onShapeCompleteRef = useRef(onShapeComplete);
+  onShapeCompleteRef.current = onShapeComplete;
+  const rectStartRef = useRef(rectStart);
+  rectStartRef.current = rectStart;
+
   useMapEvents({
     click: (e: LeafletMouseEvent) => {
       if (drawMode === 'square') {
@@ -95,35 +103,36 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
           [bounds[0][1], bounds[1][0]],
           [bounds[0][1], bounds[0][0]],
         ];
-        onShapeComplete(squareCoords, 1000);
+        onShapeCompleteRef.current(squareCoords, 1000, '10km² Square');
       } else if (drawMode === 'rectangle') {
-        if (!rectStart) {
+        const rs = rectStartRef.current;
+        if (!rs) {
           setRectStart([e.latlng.lat, e.latlng.lng]);
         } else {
           const end: [number, number] = [e.latlng.lat, e.latlng.lng];
           setRectEnd(end);
           setDrawMode('none');
           const coords = [
-            [rectStart[1], rectStart[0]],
-            [end[1], rectStart[0]],
+            [rs[1], rs[0]],
+            [end[1], rs[0]],
             [end[1], end[0]],
-            [rectStart[1], end[0]],
-            [rectStart[1], rectStart[0]],
+            [rs[1], end[0]],
+            [rs[1], rs[0]],
           ];
           const area = calculateAreaHectares(coords);
-          onShapeComplete(coords, Math.round(area * 100) / 100);
+          onShapeCompleteRef.current(coords, Math.round(area * 100) / 100, 'Rectangle');
         }
       } else if (drawMode === 'polygon') {
         // Debounce click to avoid adding points on double-click
         if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
         const point: [number, number] = [e.latlng.lat, e.latlng.lng];
         clickTimerRef.current = setTimeout(() => {
-          setPolygonPoints([...polygonPoints, point]);
+          setPolygonPoints([...polygonPointsRef.current, point]);
         }, 250);
       }
     },
     mousemove: (e: LeafletMouseEvent) => {
-      if (drawMode === 'rectangle' && rectStart) {
+      if (drawMode === 'rectangle' && rectStartRef.current) {
         setRectEnd([e.latlng.lat, e.latlng.lng]);
       }
     },
@@ -134,14 +143,16 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
           clearTimeout(clickTimerRef.current);
           clickTimerRef.current = null;
         }
-        L.DomEvent.stopPropagation(e);
-        L.DomEvent.preventDefault(e);
-        if (polygonPoints.length >= 3) {
-          const closed = [...polygonPoints, polygonPoints[0]];
+        e.originalEvent.stopPropagation();
+        e.originalEvent.preventDefault();
+        const pts = polygonPointsRef.current;
+        if (pts.length >= 3) {
+          const first = pts[0]!;
+          const closed = [...pts, first];
           const coords = closed.map((p) => [p[1], p[0]]);
           const area = calculateAreaHectares(coords);
           setDrawMode('none');
-          onShapeComplete(coords, Math.round(area * 100) / 100);
+          onShapeCompleteRef.current(coords, Math.round(area * 100) / 100, 'Polygon');
         }
       }
     },
@@ -152,7 +163,6 @@ const DrawingControls: React.FC<DrawingControlsProps> = ({
 
 export const LeafletMap: React.FC<LeafletMapProps> = ({
   onPolygonComplete,
-  initialCoordinates = [],
   height = '400px',
   className = '',
 }) => {
@@ -174,11 +184,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const mapRef = useRef<L.Map | null>(null);
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
-  useEffect(() => {
-    if (initialCoordinates.length > 0) {
-      console.log('Initial coordinates provided:', initialCoordinates);
-    }
-  }, [initialCoordinates]);
 
   // Clear all shapes
   const clearShapes = () => {
@@ -198,11 +203,18 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   };
 
   const handleShapeComplete = useCallback(
-    (coords: number[][], area: number) => {
-      setShapeInfo({ label: drawMode === 'square' ? '10km² Square' : drawMode === 'rectangle' ? 'Rectangle' : 'Polygon', area });
+    (coords: number[][], area: number, shapeType?: string) => {
+      const label = shapeType || 'Shape';
+      // For polygons, also store the completed polygon for rendering
+      if (label === 'Polygon') {
+        const leafletPts: [number, number][] = coords.map((c) => [c[1] as number, c[0] as number]);
+        setCompletedPolygon(leafletPts);
+        setPolygonPoints([]);
+      }
+      setShapeInfo({ label, area });
       onPolygonComplete?.(coords, area);
     },
-    [onPolygonComplete, drawMode]
+    [onPolygonComplete]
   );
 
   // When rectangle completes, persist bounds
@@ -215,18 +227,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       ]);
     }
   };
-
-  // When polygon completes
-  const handlePolygonComplete = useCallback(
-    (coords: number[][], area: number) => {
-      const leafletPts: [number, number][] = coords.map((c) => [c[1], c[0]]);
-      setCompletedPolygon(leafletPts);
-      setPolygonPoints([]);
-      setShapeInfo({ label: 'Polygon', area });
-      onPolygonComplete?.(coords, area);
-    },
-    [onPolygonComplete]
-  );
 
   const handleZoomIn = () => mapRef.current?.zoomIn();
   const handleZoomOut = () => mapRef.current?.zoomOut();
@@ -302,7 +302,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           <DrawingControls
             drawMode={drawMode}
             setDrawMode={setDrawMode}
-            onShapeComplete={drawMode === 'polygon' ? handlePolygonComplete : handleShapeComplete}
+            onShapeComplete={handleShapeComplete}
             setSquareBounds={setSquareBounds}
             rectStart={rectStart}
             setRectStart={setRectStart}

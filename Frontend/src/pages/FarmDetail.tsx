@@ -224,10 +224,10 @@ export default function FarmDetail() {
         )}
       </div>
 
-      {/* Right Sidebar - Fixed 350px */}
-      <div className="w-[350px] bg-white border-l border-neutral-200 flex flex-col shadow-lg overflow-hidden">
+      {/* Right Sidebar */}
+      <div className="flex h-full overflow-hidden">
         {heatmapLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-4 space-y-4">
+          <div className="w-[350px] bg-white border-l border-neutral-200 flex flex-col items-center justify-center p-4 space-y-4">
             <div className="relative">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-primary-600"></div>
             </div>
@@ -237,7 +237,7 @@ export default function FarmDetail() {
           <SidebarTabs
             farm={farm}
             heatmapData={heatmapData ?? null}
-            calendarData={Array.isArray(calendarData) ? calendarData : []}
+            weatherCalendarData={calendarData}
             canEdit={canEdit}
             onDelete={handleDelete}
             onRefreshAnalysis={handleRefreshAnalysis}

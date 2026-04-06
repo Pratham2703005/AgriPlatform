@@ -107,6 +107,10 @@ export interface HeatmapData {
     tile_urls?: {
       anomaly_heatmap?: string;
     };
+    ndvi_trend?: {
+      date: string;
+      mean_ndvi: number;
+    }[];
   };
   pixel_counts: {
     valid: number;

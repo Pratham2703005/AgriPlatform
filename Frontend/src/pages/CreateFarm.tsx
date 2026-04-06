@@ -302,7 +302,7 @@ export const CreateFarm: React.FC = () => {
                           <div>
                             <p className="text-sm font-medium text-amber-800 mb-1">Boundary Required</p>
                             <p className="text-sm text-amber-700">
-                              Click the square icon on the map to place a 10km² boundary.
+                              Use the drawing tools to define your farm boundary — place a square, drag a rectangle, or draw a polygon.
                             </p>
                           </div>
                         </div>
