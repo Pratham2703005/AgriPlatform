@@ -64,7 +64,7 @@ export default function FarmDetail() {
     if (farm && farm.coordinates && farm.coordinates.length > 0 && !hasInitiallyFetchedHeatmap && !heatmapData) {
       const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
       if (coordinates.length > 0) {
-        fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate);
+        fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate, farm.crop);
         setHasInitiallyFetchedHeatmap(true);
       }
     }
@@ -156,7 +156,7 @@ export default function FarmDetail() {
     if (farm && farm.coordinates && farm.coordinates.length > 0) {
       const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
       if (coordinates.length > 0) {
-        fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate);
+        fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate, farm.crop);
       }
     }
   };

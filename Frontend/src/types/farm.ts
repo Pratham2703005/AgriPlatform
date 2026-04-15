@@ -137,6 +137,38 @@ export interface HeatmapData {
     seasonal_planning: string[];
     risk_alerts: string[];
   };
+  news?: NewsItem[];
+  rate?: {
+    govdata?: MandiDayData[] | null;
+    agmarknet?: unknown;
+  };
+}
+
+export interface MandiRecord {
+  state: string;
+  district: string;
+  market: string;
+  commodity: string;
+  variety: string;
+  grade: string;
+  arrival_date: string;
+  min_price: number;
+  max_price: number;
+  modal_price: number;
+}
+
+export interface MandiDayData {
+  date: string;
+  records: MandiRecord[];
+}
+
+export interface NewsItem {
+  title: string;
+  description: string | null;
+  url: string;
+  urlToImage: string | null;
+  publishedAt: string;
+  source: string;
 }
 
 export interface WeatherData {

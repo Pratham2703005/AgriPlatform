@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Activity, TrendingUp, Cloud, Download, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Home, Activity, TrendingUp, Cloud, Download, Newspaper, Store, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Farm, HeatmapData } from '@/types/farm';
 import type { WeatherCalendarData } from '@/hooks/useWeatherCalendar';
 import { FarmInfoPanel } from './FarmInfoPanel';
@@ -7,8 +7,10 @@ import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { NDVITrendsPanel } from './NDVITrendsPanel';
 import { FarmWeatherCalendar } from '../FarmWeatherCalendar';
 import { ExportMapsPanel } from './ExportMapsPanel';
+import { NewsPanel } from './NewsPanel';
+import { MandiRatesPanel } from './MandiRatesPanel';
 
-type TabId = 'farm' | 'analysis' | 'trends' | 'weather' | 'export';
+type TabId = 'farm' | 'analysis' | 'trends' | 'weather' | 'news' | 'mandi' | 'export';
 
 interface Tab {
   id: TabId;
@@ -39,6 +41,8 @@ const TABS: Tab[] = [
   { id: 'analysis', label: 'AI Analysis', icon: <Activity className="h-5 w-5" />, activeColor: 'text-violet-600', activeBg: 'bg-violet-50' },
   { id: 'trends', label: 'NDVI Trends', icon: <TrendingUp className="h-5 w-5" />, activeColor: 'text-emerald-600', activeBg: 'bg-emerald-50' },
   { id: 'weather', label: 'Weather', icon: <Cloud className="h-5 w-5" />, activeColor: 'text-sky-600', activeBg: 'bg-sky-50' },
+  { id: 'news', label: 'News', icon: <Newspaper className="h-5 w-5" />, activeColor: 'text-orange-600', activeBg: 'bg-orange-50' },
+  { id: 'mandi', label: 'Mandi Rates', icon: <Store className="h-5 w-5" />, activeColor: 'text-rose-600', activeBg: 'bg-rose-50' },
   { id: 'export', label: 'Export', icon: <Download className="h-5 w-5" />, activeColor: 'text-amber-600', activeBg: 'bg-amber-50' },
 ];
 
@@ -181,6 +185,17 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                   {weatherLoading ? 'Loading weather data...' : 'No weather data available'}
                 </p>
               </div>
+            )}
+
+            {activeTab === 'news' && (
+              <NewsPanel news={heatmapData?.news ?? []} />
+            )}
+
+            {activeTab === 'mandi' && (
+              <MandiRatesPanel 
+                govdata={heatmapData?.rate?.govdata ?? []}
+                agmarknet={heatmapData?.rate?.agmarknet}
+              />
             )}
 
             {activeTab === 'export' && (
