@@ -142,6 +142,27 @@ export interface HeatmapData {
     govdata?: MandiDayData[] | null;
     agmarknet?: unknown;
   };
+  ai_analysis?: {
+    summary: string;
+    overall_health: 'Excellent' | 'Good' | 'Moderate' | 'Poor' | 'Critical';
+    confidence: 'Low' | 'Medium' | 'High';
+    risk_score: number;
+    priority: 'Low' | 'Medium' | 'High';
+    issues: Array<{
+      id: string;
+      name: string;
+      affected_area_pct: number;
+      priority: 'Low' | 'Medium' | 'High';
+    }>;
+    why_happening: string[];
+    immediate_actions: string[];
+    monitor_next: string[];
+    risk_if_ignored: string;
+    simple_advice: {
+      en: string;
+      hi: string;
+    };
+  };
 }
 
 export interface MandiRecord {

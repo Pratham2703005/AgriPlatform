@@ -9,7 +9,14 @@ export interface UseHeatmapReturn {
   error: string | null;
   isCached: boolean;
   cachedAt: string | null;
-  fetchHeatmapData: (coordinates: number[][], t1?: number, t2?: number, cultivation_date?: string, harvest_date?: string, crop?: string) => Promise<void>;
+  fetchHeatmapData: (
+    coordinates: number[][],
+    t1?: number,
+    t2?: number,
+    cultivation_date?: string,
+    harvest_date?: string,
+    crop?: string
+  ) => Promise<void>;
 }
 
 export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
@@ -37,7 +44,10 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
               setHeatmapData(cached.data);
               setIsCached(true);
               setCachedAt(cached.cachedAt);
-              console.log('📦 Loaded heatmap cache from MongoDB for farm:', farmId);
+              console.log(
+                '📦 Loaded heatmap cache from MongoDB for farm:',
+                farmId
+              );
             }
           } else {
             // Guest mode: fall back to localStorage
@@ -46,7 +56,10 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
               setHeatmapData(cached.data);
               setIsCached(true);
               setCachedAt(cached.cachedAt);
-              console.log('📦 Loaded heatmap cache from localStorage (guest) for farm:', farmId);
+              console.log(
+                '📦 Loaded heatmap cache from localStorage (guest) for farm:',
+                farmId
+              );
             }
           }
         } catch (err) {
@@ -57,74 +70,108 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
     }
   }, [farmId]);
 
-  const fetchHeatmapData = useCallback(async (coordinates: number[][], t1: number = 0.5, t2: number = 0.75, cultivation_date?: string, harvest_date?: string, crop?: string) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Call the FastAPI endpoint directly
-      const response = await fetch('http://127.0.0.1:8000/generate_heatmap_lite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          coordinates: coordinates,
-          t1: t1,
-          t2: t2,
-          ...(cultivation_date && { cultivation_date }),
-          ...(harvest_date && { harvest_date }),
-          ...(crop && { crop })
-        }),
-      });
+  const fetchHeatmapData = useCallback(
+    async (
+      coordinates: number[][],
+      t1: number = 0.5,
+      t2: number = 0.75,
+      cultivation_date?: string,
+      harvest_date?: string,
+      crop?: string
+    ) => {
+      setLoading(true);
+      setError(null);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch heatmap analysis');
-      }
-
-      const data: HeatmapData = await response.json();
-      setHeatmapData(data);
-      setIsCached(false);
-      setCachedAt(null);
-
-      // Cache the data if farmId is provided
-      if (farmId) {
-        try {
-          const isAuthenticated = !!(
-            typeof window !== 'undefined' &&
-            localStorage.getItem('auth_token') &&
-            localStorage.getItem('auth_user')
-          );
-
-          if (isAuthenticated) {
-            // Save to MongoDB via backend
-            const savedAt = await FarmAPI.saveHeatmapCache(farmId, data);
-            console.log('💾 Heatmap data saved to MongoDB for farm:', farmId);
-            setCachedAt(savedAt);
-          } else {
-            // Guest mode: save to localStorage
-            const cachedEntry = await heatmapService.save(farmId, data);
-            console.log('💾 Heatmap data cached in localStorage (guest) for farm:', farmId);
-            setCachedAt(cachedEntry.cachedAt);
+      try {
+        // Call the FastAPI endpoint directly
+        const response = await fetch(
+          'http://127.0.0.1:8001/generate_heatmap_lite',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              coordinates: coordinates,
+              t1: t1,
+              t2: t2,
+              ...(cultivation_date && { cultivation_date }),
+              ...(harvest_date && { harvest_date }),
+              ...(crop && { crop }),
+            }),
           }
-        } catch (cacheErr) {
-          console.error('Error caching heatmap data:', cacheErr);
-        }
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching heatmap data';
-      setError(errorMessage);
-      console.error('Heatmap fetch error:', err);
+        );
 
-      // If fetch fails and we have cached data, keep it visible
-      if (heatmapData) {
-        setIsCached(true);
-        console.log('⚠️ Fetch failed, using cached heatmap data');
+        if (!response.ok) {
+          let backendDetail = '';
+          try {
+            const errorBody = await response.json();
+            backendDetail = (
+              errorBody?.detail ||
+              errorBody?.message ||
+              ''
+            ).toString();
+          } catch {
+            // Ignore JSON parsing errors for non-JSON responses.
+          }
+
+          const message = backendDetail
+            ? `Heatmap API error (${response.status}): ${backendDetail}`
+            : `Heatmap API error (${response.status})`;
+          throw new Error(message);
+        }
+
+        const data: HeatmapData = await response.json();
+        setHeatmapData(data);
+        setIsCached(false);
+        setCachedAt(null);
+
+        // Cache the data if farmId is provided
+        if (farmId) {
+          try {
+            const isAuthenticated = !!(
+              typeof window !== 'undefined' &&
+              localStorage.getItem('auth_token') &&
+              localStorage.getItem('auth_user')
+            );
+
+            if (isAuthenticated) {
+              // Save to MongoDB via backend
+              const savedAt = await FarmAPI.saveHeatmapCache(farmId, data);
+              console.log('💾 Heatmap data saved to MongoDB for farm:', farmId);
+              setCachedAt(savedAt);
+            } else {
+              // Guest mode: save to localStorage
+              const cachedEntry = await heatmapService.save(farmId, data);
+              console.log(
+                '💾 Heatmap data cached in localStorage (guest) for farm:',
+                farmId
+              );
+              setCachedAt(cachedEntry.cachedAt);
+            }
+          } catch (cacheErr) {
+            console.error('Error caching heatmap data:', cacheErr);
+          }
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'An error occurred while fetching heatmap data';
+        setError(errorMessage);
+        console.error('Heatmap fetch error:', err);
+
+        // If fetch fails and we have cached data, keep it visible
+        if (heatmapData) {
+          setIsCached(true);
+          console.log('⚠️ Fetch failed, using cached heatmap data');
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [farmId, heatmapData]);
+    },
+    [farmId, heatmapData]
+  );
 
   return {
     heatmapData,
@@ -135,4 +182,3 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
     fetchHeatmapData,
   };
 };
-    
