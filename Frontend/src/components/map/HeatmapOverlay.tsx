@@ -1,7 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Polygon, ScaleControl, ImageOverlay } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Polygon,
+  ScaleControl,
+  ImageOverlay,
+} from 'react-leaflet';
 import L from 'leaflet';
-import { Layers, ZoomIn, ZoomOut, RotateCcw, LocateFixed, Settings } from 'lucide-react';
+import {
+  Layers,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  LocateFixed,
+  Settings,
+} from 'lucide-react';
 import type { HeatmapData } from '@/types/farm';
 import 'leaflet/dist/leaflet.css';
 import './HeatmapOverlay.css';
@@ -10,9 +23,12 @@ import './HeatmapOverlay.css';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconRetinaUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
 export type LayerType = 'ndvi' | 'ndwi' | 'ndre' | 'anomaly';
@@ -26,6 +42,7 @@ interface HeatmapOverlayProps {
   onLayerChange?: (layer: LayerType) => void;
   maskOpacity?: Record<string, number>; // Individual mask opacity: { red: 0.7, yellow: 0.6, ... }
   anomalyTileUrl?: string | undefined; // Tile URL for anomaly map
+  focusRequestId?: number;
 }
 
 interface MaskOverlay {
@@ -39,24 +56,94 @@ interface MaskOverlay {
 
 // NDVI mask set (red -> yellow -> green)
 const createNdviMaskSet = (): MaskOverlay[] => [
-  { id: 'red', name: 'Stressed Areas', color: '#ef4444', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'yellow', name: 'Moderate Health', color: '#eab308', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'green', name: 'Healthy Areas', color: '#22c55e', base64Data: '', opacity: 0.7, visible: true },
+  {
+    id: 'red',
+    name: 'Stressed Areas',
+    color: '#ef4444',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
+  {
+    id: 'yellow',
+    name: 'Moderate Health',
+    color: '#eab308',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
+  {
+    id: 'green',
+    name: 'Healthy Areas',
+    color: '#22c55e',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
 ];
 
 // NDWI mask set (brown -> yellow -> light blue)
 const createNdwiMaskSet = (): MaskOverlay[] => [
-  { id: 'brown', name: 'Very Low Water', color: '#8B4513', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'yellow', name: 'Low Water', color: '#eab308', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'light_blue', name: 'Moderate Water', color: '#87CEFA', base64Data: '', opacity: 0.7, visible: true },
+  {
+    id: 'brown',
+    name: 'Very Low Water',
+    color: '#8B4513',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
+  {
+    id: 'yellow',
+    name: 'Low Water',
+    color: '#eab308',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
+  {
+    id: 'light_blue',
+    name: 'Moderate Water',
+    color: '#87CEFA',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
 ];
 
 // NDRE mask set (purple -> pink -> light green -> dark green)
 const createNdreMaskSet = (): MaskOverlay[] => [
-  { id: 'purple', name: 'Stressed Vegetation', color: '#800080', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'pink', name: 'Moderate Stress', color: '#FF69B4', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'light_green', name: 'Healthy', color: '#90EE90', base64Data: '', opacity: 0.7, visible: true },
-  { id: 'dark_green', name: 'Very Healthy', color: '#006400', base64Data: '', opacity: 0.7, visible: true },
+  {
+    id: 'purple',
+    name: 'Stressed Vegetation',
+    color: '#800080',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
+  {
+    id: 'pink',
+    name: 'Moderate Stress',
+    color: '#FF69B4',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
+  {
+    id: 'light_green',
+    name: 'Healthy',
+    color: '#90EE90',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
+  {
+    id: 'dark_green',
+    name: 'Very Healthy',
+    color: '#006400',
+    base64Data: '',
+    opacity: 0.7,
+    visible: true,
+  },
 ];
 
 // Component to handle anomaly image overlay with bounds
@@ -68,10 +155,13 @@ const AnomalyImageOverlay: React.FC<{
   // Calculate bounds from coordinates
   const getBounds = (): L.LatLngBounds | null => {
     if (coordinates.length === 0) return null;
-    
+
     const leafletCoords: [number, number][] = coordinates
-      .filter((coord): coord is [number, number] => Array.isArray(coord) && coord.length >= 2)
-      .map((coord) => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
+      .filter(
+        (coord): coord is [number, number] =>
+          Array.isArray(coord) && coord.length >= 2
+      )
+      .map(coord => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
 
     if (leafletCoords.length === 0) return null;
 
@@ -93,7 +183,7 @@ const AnomalyImageOverlay: React.FC<{
       url={anomalyTileUrl}
       bounds={bounds}
       opacity={opacity}
-      crossOrigin="anonymous"
+      crossOrigin='anonymous'
     />
   );
 };
@@ -107,10 +197,13 @@ const HeatmapImageOverlays: React.FC<{
   // Calculate bounds from coordinates
   const getBounds = (): L.LatLngBounds | null => {
     if (coordinates.length === 0) return null;
-    
+
     const leafletCoords: [number, number][] = coordinates
-      .filter((coord): coord is [number, number] => Array.isArray(coord) && coord.length >= 2)
-      .map((coord) => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
+      .filter(
+        (coord): coord is [number, number] =>
+          Array.isArray(coord) && coord.length >= 2
+      )
+      .map(coord => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
 
     if (leafletCoords.length === 0) return null;
 
@@ -129,10 +222,11 @@ const HeatmapImageOverlays: React.FC<{
 
   return (
     <>
-      {masks.map((mask) => {
+      {masks.map(mask => {
         const opacity = maskOpacity[mask.id] ?? mask.opacity;
         return (
-          mask.visible && mask.base64Data && (
+          mask.visible &&
+          mask.base64Data && (
             <ImageOverlay
               key={mask.id}
               url={`data:image/png;base64,${mask.base64Data}`}
@@ -154,17 +248,23 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   activeLayer: activeLayerProp,
   maskOpacity = {},
   anomalyTileUrl,
+  focusRequestId,
 }) => {
-  const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
+  const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>(
+    'hybrid'
+  );
   const [showStyleSelector, setShowStyleSelector] = useState(false);
   const activeLayer = activeLayerProp ?? 'ndvi';
   const mapRef = useRef<L.Map | null>(null);
   const MAP_API_KEY = import.meta.env.VITE_MAP_API_KEY;
 
   // Independent mask state for each layer
-  const [ndviMasks, setNdviMasks] = useState<MaskOverlay[]>(createNdviMaskSet());
-  const [ndwiMasks, setNdwiMasks] = useState<MaskOverlay[]>(createNdwiMaskSet());
-  const [ndreMasks, setNdreMasks] = useState<MaskOverlay[]>(createNdreMaskSet());
+  const [ndviMasks, setNdviMasks] =
+    useState<MaskOverlay[]>(createNdviMaskSet());
+  const [ndwiMasks, setNdwiMasks] =
+    useState<MaskOverlay[]>(createNdwiMaskSet());
+  const [ndreMasks, setNdreMasks] =
+    useState<MaskOverlay[]>(createNdreMaskSet());
 
   // Helpers to get the active layer's masks
   const masksMap: Partial<Record<LayerType, MaskOverlay[]>> = {
@@ -185,11 +285,14 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
         prev.map(mask => ({
           ...mask,
           base64Data:
-            mask.id === 'red' ? heatmapData.masks.red_mask_base64 :
-            mask.id === 'yellow' ? heatmapData.masks.yellow_mask_base64 :
-            mask.id === 'green' ? heatmapData.masks.green_mask_base64 :
-            mask.base64Data,
-        })),
+            mask.id === 'red'
+              ? heatmapData.masks.red_mask_base64
+              : mask.id === 'yellow'
+                ? heatmapData.masks.yellow_mask_base64
+                : mask.id === 'green'
+                  ? heatmapData.masks.green_mask_base64
+                  : mask.base64Data,
+        }))
       );
     }
 
@@ -200,11 +303,14 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
         prev.map(mask => ({
           ...mask,
           base64Data:
-            mask.id === 'brown' ? (ndwiData.brown_mask_base64 ?? '') :
-            mask.id === 'yellow' ? (ndwiData.yellow_mask_base64 ?? '') :
-            mask.id === 'light_blue' ? (ndwiData.light_blue_mask_base64 ?? '') :
-            mask.base64Data,
-        })),
+            mask.id === 'brown'
+              ? (ndwiData.brown_mask_base64 ?? '')
+              : mask.id === 'yellow'
+                ? (ndwiData.yellow_mask_base64 ?? '')
+                : mask.id === 'light_blue'
+                  ? (ndwiData.light_blue_mask_base64 ?? '')
+                  : mask.base64Data,
+        }))
       );
     }
 
@@ -215,12 +321,16 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
         prev.map(mask => ({
           ...mask,
           base64Data:
-            mask.id === 'purple' ? (ndreData.purple_mask_base64 ?? '') :
-            mask.id === 'pink' ? (ndreData.pink_mask_base64 ?? '') :
-            mask.id === 'light_green' ? (ndreData.light_green_mask_base64 ?? '') :
-            mask.id === 'dark_green' ? (ndreData.dark_green_mask_base64 ?? '') :
-            mask.base64Data,
-        })),
+            mask.id === 'purple'
+              ? (ndreData.purple_mask_base64 ?? '')
+              : mask.id === 'pink'
+                ? (ndreData.pink_mask_base64 ?? '')
+                : mask.id === 'light_green'
+                  ? (ndreData.light_green_mask_base64 ?? '')
+                  : mask.id === 'dark_green'
+                    ? (ndreData.dark_green_mask_base64 ?? '')
+                    : mask.base64Data,
+        }))
       );
     }
   }, [heatmapData]);
@@ -228,18 +338,30 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   // Convert coordinates to Leaflet format [lat, lng]
   const leafletCoords: [number, number][] = Array.isArray(coordinates)
     ? coordinates
-        .filter((coord): coord is [number, number] => Array.isArray(coord) && coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
-        .map((coord) => [coord[1], coord[0]])
+        .filter(
+          (coord): coord is [number, number] =>
+            Array.isArray(coord) &&
+            coord.length >= 2 &&
+            typeof coord[0] === 'number' &&
+            typeof coord[1] === 'number'
+        )
+        .map(coord => [coord[1], coord[0]])
     : [];
 
   // Calculate center of the polygon
   const getPolygonCenter = (): [number, number] => {
     if (leafletCoords.length === 0) {
-      return [28.6139, 77.2090]; // Default center
+      return [28.6139, 77.209]; // Default center
     }
 
-    const latSum = leafletCoords.reduce((sum: number, coord: [number, number]) => sum + coord[0], 0);
-    const lngSum = leafletCoords.reduce((sum: number, coord: [number, number]) => sum + coord[1], 0);
+    const latSum = leafletCoords.reduce(
+      (sum: number, coord: [number, number]) => sum + coord[0],
+      0
+    );
+    const lngSum = leafletCoords.reduce(
+      (sum: number, coord: [number, number]) => sum + coord[1],
+      0
+    );
     return [latSum / leafletCoords.length, lngSum / leafletCoords.length];
   };
 
@@ -276,13 +398,37 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
     }
   };
 
-  const handleResetView = () => {
-    if (mapRef.current) {
-      const center = getPolygonCenter();
-      const zoom = getZoomLevel();
-      mapRef.current.setView(center, zoom);
+  const fitToFarmBounds = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (leafletCoords.length > 2) {
+      const bounds = L.latLngBounds(leafletCoords);
+      map.flyToBounds(bounds.pad(0.2), {
+        animate: true,
+        duration: 0.8,
+        maxZoom: 17,
+      });
+      return;
     }
+
+    const center = getPolygonCenter();
+    const zoom = getZoomLevel();
+    map.flyTo(center, zoom, {
+      animate: true,
+      duration: 0.8,
+    });
   };
+
+  const handleResetView = () => {
+    fitToFarmBounds();
+  };
+
+  useEffect(() => {
+    if (!focusRequestId) return;
+    fitToFarmBounds();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequestId]);
 
   const handleLocateMe = () => {
     const map = mapRef.current;
@@ -291,11 +437,11 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
     if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      pos => {
         const { latitude, longitude } = pos.coords;
         map.flyTo([latitude, longitude], 16, {
           animate: true,
-          duration: 2
+          duration: 2,
         });
       },
       () => {
@@ -314,8 +460,11 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   const zoom = getZoomLevel();
 
   return (
-    <div className={`relative ${className}`} style={{zIndex:1}}>
-      <div style={{ height }} className="w-full rounded-lg overflow-hidden border">
+    <div className={`relative ${className}`} style={{ zIndex: 1 }}>
+      <div
+        style={{ height }}
+        className='w-full rounded-lg overflow-hidden border'
+      >
         <MapContainer
           center={center}
           zoom={zoom}
@@ -332,7 +481,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
           />
 
           {/* Scale Control */}
-          <ScaleControl position="bottomleft" imperial={false} />
+          <ScaleControl position='bottomleft' imperial={false} />
 
           {/* Farm Boundary Polygon */}
           {leafletCoords.length > 2 && (
@@ -342,126 +491,130 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
                 color: '#10b981',
                 weight: 3,
                 fillOpacity: 0.1,
-                fillColor: '#10b981'
+                fillColor: '#10b981',
               }}
             />
           )}
 
           {/* Heatmap Image Overlays — only the active layer's masks */}
           {heatmapData && activeLayer !== 'anomaly' && (
-            <HeatmapImageOverlays coordinates={coordinates} masks={activeMasks} maskOpacity={maskOpacity} />
+            <HeatmapImageOverlays
+              coordinates={coordinates}
+              masks={activeMasks}
+              maskOpacity={maskOpacity}
+            />
           )}
 
           {/* Anomaly Image Overlay - constrained to farm bounds */}
           {activeLayer === 'anomaly' && anomalyTileUrl && (
-            <AnomalyImageOverlay 
-              coordinates={coordinates} 
-              anomalyTileUrl={anomalyTileUrl} 
-              opacity={maskOpacity?.anomaly ?? 0.7} 
+            <AnomalyImageOverlay
+              coordinates={coordinates}
+              anomalyTileUrl={anomalyTileUrl}
+              opacity={maskOpacity?.anomaly ?? 0.7}
             />
           )}
         </MapContainer>
       </div>
 
       {/* Left Side Controls Panel */}
-      <div className="absolute top-3 left-3 z-[1000] bg-white backdrop-blur-sm rounded-md shadow-lg border border-neutral-700">
-        <div className="p-2 space-y-1.5">
+      <div className='absolute top-3 left-3 z-[1000] bg-white backdrop-blur-sm rounded-md shadow-lg border border-neutral-700'>
+        <div className='p-2 space-y-1.5'>
           {/* Navigation Tools */}
           <button
-            type="button"
+            type='button'
             onClick={handleZoomIn}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="Zoom In"
+            className='w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group'
+            title='Zoom In'
           >
-            <ZoomIn className="h-4 w-4 group-hover:scale-110 transition-transform" />
+            <ZoomIn className='h-4 w-4 group-hover:scale-110 transition-transform' />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={handleZoomOut}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="Zoom Out"
+            className='w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group'
+            title='Zoom Out'
           >
-            <ZoomOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
+            <ZoomOut className='h-4 w-4 group-hover:scale-110 transition-transform' />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={handleResetView}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="Reset View"
+            className='w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group'
+            title='Reset View'
           >
-            <RotateCcw className="h-4 w-4 group-hover:scale-110 transition-transform" />
+            <RotateCcw className='h-4 w-4 group-hover:scale-110 transition-transform' />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={handleLocateMe}
-            className="w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group"
-            title="My Location"
+            className='w-8 h-8 bg-white text-black rounded-sm hover:bg-gray-100 flex items-center justify-center transition-all duration-200 group'
+            title='My Location'
           >
-            <LocateFixed className="h-4 w-4 group-hover:scale-110 transition-transform" />
+            <LocateFixed className='h-4 w-4 group-hover:scale-110 transition-transform' />
           </button>
 
           {/* Divider */}
-          <div className="h-px bg-neutral-600 my-2"></div>
+          <div className='h-px bg-neutral-600 my-2'></div>
 
           {/* Map Style Toggle */}
           <button
-            type="button"
+            type='button'
             onClick={() => setShowStyleSelector(!showStyleSelector)}
             className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
-              showStyleSelector 
-                ? 'bg-gray-100 text-black' 
+              showStyleSelector
+                ? 'bg-gray-100 text-black'
                 : 'bg-white text-black hover:bg-gray-100'
             }`}
-            title="Map Style"
+            title='Map Style'
           >
-            <Layers className="h-4 w-4 group-hover:scale-110 transition-transform" />
+            <Layers className='h-4 w-4 group-hover:scale-110 transition-transform' />
           </button>
 
           {/* Heatmap Controls Toggle */}
           {heatmapData && (
             <button
-              type="button"
+              type='button'
               onClick={() => setShowStyleSelector(false)}
               className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group bg-white text-black hover:bg-gray-100`}
-              title="Layer controls are now in bottom-left"
+              title='Layer controls are now in bottom-left'
               disabled
             >
-              <Settings className="h-4 w-4 group-hover:scale-110 transition-transform opacity-50" />
+              <Settings className='h-4 w-4 group-hover:scale-110 transition-transform opacity-50' />
             </button>
           )}
         </div>
 
         {/* Map Style Selector */}
         {showStyleSelector && (
-          <div className="absolute left-full top-0 ml-2 bg-white rounded-md shadow-lg border border-neutral-700 py-1 min-w-[100px]">
+          <div className='absolute left-full top-0 ml-2 bg-white rounded-md shadow-lg border border-neutral-700 py-1 min-w-[100px]'>
             <button
-              type="button"
+              type='button'
               onClick={() => handleStyleChange('hybrid')}
               className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
-                mapStyle === 'hybrid' 
-                  ? 'bg-blue-100 text-blue-600' 
+                mapStyle === 'hybrid'
+                  ? 'bg-blue-100 text-blue-600'
                   : 'text-black hover:bg-gray-100'
               }`}
             >
               Hybrid
             </button>
             <button
-              type="button"
+              type='button'
               onClick={() => handleStyleChange('satellite')}
               className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
-                mapStyle === 'satellite' 
-                  ? 'bg-blue-100 text-blue-600' 
+                mapStyle === 'satellite'
+                  ? 'bg-blue-100 text-blue-600'
                   : 'text-black hover:bg-gray-100'
               }`}
             >
               Satellite
             </button>
             <button
-              type="button"
+              type='button'
               onClick={() => handleStyleChange('streets')}
               className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
-                mapStyle === 'streets' 
-                  ? 'bg-blue-100 text-blue-600' 
+                mapStyle === 'streets'
+                  ? 'bg-blue-100 text-blue-600'
                   : 'text-black hover:bg-gray-100'
               }`}
             >
