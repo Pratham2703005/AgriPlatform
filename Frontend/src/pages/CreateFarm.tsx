@@ -9,6 +9,7 @@ import { LeafletMap } from '../components/map/LeafletMap';
 import { ArrowLeft, Sprout, MapPin, Calendar, Plus, FileText, User, Activity, Map } from 'lucide-react';
 import { formatHectares } from '@/utils';
 import cropData from '@/assets/p.json';
+import { toast } from 'robot-toast';
 
 export const CreateFarm: React.FC = () => {
   const navigate = useNavigate();
@@ -40,9 +41,24 @@ export const CreateFarm: React.FC = () => {
     }
   }, [plantingDate, selectedCrop, setValue]);
 
+  // Show error toast when error state changes
+  useEffect(() => {
+    if (error) {
+      toast.error({
+        message: error,
+        robotVariant: '/corn-error.png',
+        autoClose: 0
+      });
+    }
+  }, [error]);
+
   const onSubmit = async (data: FarmFormData) => {
     if (coordinates.length === 0) {
-      alert('Please draw your farm boundary on the map');
+      toast.error({
+        message: 'Please draw your farm boundary on the map',
+        robotVariant: '/corn-error.png',
+        autoClose: 0
+      });
       return;
     }
 
@@ -55,7 +71,12 @@ export const CreateFarm: React.FC = () => {
 
     try {
       await addFarm(data, coordinates, area);
-      navigate('/dashboard');
+      toast.success({
+        message: 'Farm created successfully!',
+        robotVariant: '/corn-base.png',
+        autoClose: 0
+      });
+      setTimeout(() => navigate('/dashboard'), 500);
     } catch (error) {
       console.error('Error creating farm:', error);
     }
@@ -311,20 +332,7 @@ export const CreateFarm: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Error Display */}
-                {error && (
-                  <div className="card-elevated bg-red-50 border-l-4 border-l-red-500 p-6 animate-in">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <Activity className="h-5 w-5 text-red-500" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-red-800 mb-1">Creation Failed</h3>
-                        <p className="text-sm text-red-700">{error}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* Error Display removed - now using toast notifications */}
 
                 {/* Action Buttons */}
                 <div className="flex justify-between items-center pt-8 border-t border-neutral-200">

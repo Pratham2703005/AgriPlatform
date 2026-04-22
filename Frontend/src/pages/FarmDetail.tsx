@@ -8,8 +8,9 @@ import { HeatmapOverlay } from '../components/map/HeatmapOverlay';
 import { MapLayerSelector } from '../components/map/MapLayerSelector';
 import { SidebarTabs } from '../components/sidebar/SidebarTabs';
 import type { LayerType } from '../components/map/HeatmapOverlay';
-import { ArrowLeft, Sprout, Lock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Sprout, Lock } from 'lucide-react';
 import type { Farm } from '@/types/farm';
+import { toast } from 'robot-toast';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
@@ -69,6 +70,17 @@ export default function FarmDetail() {
       }
     }
   }, [farm, fetchHeatmapData, hasInitiallyFetchedHeatmap, heatmapData]);
+
+  // Show error toast when heatmap error occurs
+  useEffect(() => {
+    if (heatmapError) {
+      toast.error({
+        message: heatmapError,
+        robotVariant: '/corn-error.png',
+        autoClose: 0
+      });
+    }
+  }, [heatmapError]);
 
   // Show loader if loading or farms not loaded
   if (loading || !id || farms.length === 0) {
@@ -145,7 +157,12 @@ export default function FarmDetail() {
     if (confirm(`Are you sure you want to delete "${farm?.name}"? This action cannot be undone.`)) {
       try {
         await deleteFarm(farm?.id || '');
-        navigate('/dashboard');
+        toast.success({
+          message: 'Farm deleted successfully!',
+          robotVariant: '/corn-base.png',
+          autoClose: 0
+        });
+        setTimeout(() => navigate('/dashboard'), 500);
       } catch (error) {
         console.error('Error deleting farm:', error);
       }
@@ -156,6 +173,11 @@ export default function FarmDetail() {
     if (farm && farm.coordinates && farm.coordinates.length > 0) {
       const coordinates = farm.coordinates.filter(coord => coord.length >= 2).map(coord => [coord[0]!, coord[1]!]);
       if (coordinates.length > 0) {
+        toast.success({
+          message: 'Refreshing analysis...',
+          robotVariant: '/corn-base.png',
+          autoClose: 0
+        });
         fetchHeatmapData(coordinates, 0.5, 0.75, farm.plantingDate, farm.harvestDate, farm.crop);
       }
     }
@@ -204,24 +226,7 @@ export default function FarmDetail() {
           />
         )}
 
-        {/* Error Banner */}
-        {heatmapError && (
-          <div className="absolute bottom-4 left-4 z-[500] bg-red-50 border border-red-200 rounded-lg p-4 max-w-sm shadow-lg">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-red-900 text-sm">Analysis Failed</h4>
-                <p className="text-red-800 text-xs mt-1">{heatmapError}</p>
-                <button
-                  onClick={handleRefreshAnalysis}
-                  className="text-xs font-semibold text-red-700 hover:text-red-900 mt-2 underline"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Error Banner removed - now using toast notifications */}
       </div>
 
       {/* Right Sidebar */}

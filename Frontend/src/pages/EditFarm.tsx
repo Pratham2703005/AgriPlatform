@@ -8,6 +8,7 @@ import { CROP_OPTIONS } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
 import { ArrowLeft, Sprout, MapPin, Calendar, Save, X } from 'lucide-react';
 import { formatHectares } from '@/utils';
+import { toast } from 'robot-toast';
 
 export default function EditFarm() {
   const { id } = useParams<{ id: string }>();
@@ -60,6 +61,17 @@ export default function EditFarm() {
       setArea(farm?.area);
     }
   }, [farm, setValue]);
+
+  // Show error toast when error state changes
+  useEffect(() => {
+    if (error) {
+      toast.error({
+        message: error,
+        robotVariant: '/corn-error.png',
+        autoClose: 0
+      });
+    }
+  }, [error]);
 
   if (loading) {
     return (
@@ -127,7 +139,11 @@ export default function EditFarm() {
 
   const onSubmit = async (data: FarmFormData) => {
     if (coordinates.length === 0) {
-      alert('Please draw your farm boundary on the map');
+      toast.error({
+        message: 'Please draw your farm boundary on the map',
+        robotVariant: '/corn-error.png',
+        autoClose: 0
+      });
       return;
     }
 
@@ -140,8 +156,13 @@ export default function EditFarm() {
           coordinates,
           area
         });
+        toast.success({
+          message: 'Farm updated successfully!',
+          robotVariant: '/corn-base.png',
+          autoClose: 0
+        });
         // Only navigate after the update is complete
-        navigate(`/farm/${farm.id}`);
+        setTimeout(() => navigate(`/farm/${farm.id}`), 500);
       } catch (error) {
         console.error('Error updating farm:', error);
         // Error is already handled by the store
@@ -325,7 +346,6 @@ export default function EditFarm() {
                 <div className="space-y-4">
                   <LeafletMap
                     onPolygonComplete={handlePolygonComplete}
-                    initialCoordinates={coordinates}
                     height="500px"
                     className="border rounded-lg"
                   />
@@ -360,15 +380,7 @@ export default function EditFarm() {
               )}
             </div>
 
-            {/* Enhanced Error Display */}
-            {error && (
-              <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
-                <div className="flex items-center">
-                  <div className="h-5 w-5 text-red-600 mr-3">⚠️</div>
-                  <p className="text-red-800 text-sm font-medium">{error}</p>
-                </div>
-              </div>
-            )}
+            {/* Enhanced Error Display removed - now using toast notifications */}
 
             {/* Enhanced Action Buttons */}
             <div className="flex justify-between items-center pt-8 border-t border-neutral-200">

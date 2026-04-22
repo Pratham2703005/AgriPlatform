@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Sprout, Shield, Activity } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'robot-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,17 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Show error toast when error state changes
+  useEffect(() => {
+    if (error) {
+      toast.error({
+        message: error,
+        robotVariant: '/corn-error.png',
+        autoClose: 0
+      });
+    }
+  }, [error]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -20,6 +32,11 @@ export default function LoginPage() {
     const result = await login(email, password);
     
     if (result.success) {
+      toast.success({
+        message: 'Login successful!',
+        robotVariant: '/corn-base.png',
+        autoClose: 0
+      });
       // Wait a moment to ensure auth state is fully updated
       await new Promise(resolve => setTimeout(resolve, 300));
       navigate('/dashboard');
@@ -49,16 +66,7 @@ export default function LoginPage() {
         {/* Enhanced Form Card */}
         <div className="card-elevated p-8 animate-in stagger-1">
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {error && (
-              <div className="card-elevated bg-red-50 border-l-4 border-l-red-500 p-4 animate-in">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <Shield className="h-5 w-5 text-red-500" />
-                  </div>
-                  <div className="text-sm text-red-700">{error}</div>
-                </div>
-              </div>
-            )}
+            {/* Error display removed - now using toast notifications */}
 
             <div className="space-y-4">
               <div>

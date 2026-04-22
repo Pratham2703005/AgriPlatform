@@ -6,12 +6,24 @@ import { LogOut, Plus, MapPin, Sprout, User, Crown, TrendingUp, Activity, BarCha
 import {AddFarmCard, Card} from '@/components/card'; 
 import { formatHectares } from '@/utils';
 import type { Farm } from '@/types/farm';
+import { toast } from 'robot-toast';
 
 export default function UserDashboard() {
   const { user, logout, isGuestMode, migrationStatus } = useAuth();
   const { farms, loading, error, fetchFarms, clearError } = useFarms();
   const memoFetchFarms = useCallback(() => fetchFarms(), [fetchFarms]);
   const memoClearError = useCallback(() => clearError(), [clearError]);
+
+  // Show error toast when error state changes
+  useEffect(() => {
+    if (error) {
+      toast.error({
+        message: error,
+        robotVariant: '/corn-error.png',
+        autoClose: 0
+      });
+    }
+  }, [error]);
 
   // Simple effect: fetch farms when component mounts and user is available
   useEffect(() => {
@@ -202,29 +214,7 @@ export default function UserDashboard() {
             </div>
           )}
 
-          {/* Error State */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Error loading farms
-                  </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      onClick={() => fetchFarms()}
-                      className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Error State removed - now using toast notifications */}
 
           {/* Enhanced Loading State */}
           {loading && (
