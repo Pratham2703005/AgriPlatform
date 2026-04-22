@@ -312,6 +312,10 @@ export default function FarmDetail() {
             canEdit={canEdit}
             onDelete={handleDelete}
             onViewFarmOnMap={() => setMapFocusRequestId(prev => prev + 1)}
+            onViewStressMap={() => {
+              setActiveLayer('anomaly');
+              setMapFocusRequestId(prev => prev + 1);
+            }}
             onRefreshAnalysis={handleRefreshAnalysis}
             onRefreshWeather={() => {
               if (farm && farm.coordinates && farm.coordinates.length > 0) {
