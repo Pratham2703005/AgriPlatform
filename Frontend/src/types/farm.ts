@@ -20,6 +20,18 @@ export interface FarmFormData {
   description?: string;
 }
 
+export interface AgmarknetData {
+  success: boolean;
+  message: string;
+  title: string;
+  data: Array<{
+    key: string;
+    columns: Array<{ key: string; title: string }>;
+  }>;
+  rows: Array<Record<string, string | number | null>>;
+  average?: Record<string, string | number | null>;
+}
+
 export interface FarmState {
   farms: Farm[];
   allFarms: Farm[];
@@ -140,7 +152,7 @@ export interface HeatmapData {
   news?: NewsItem[];
   rate?: {
     govdata?: MandiDayData[] | null;
-    agmarknet?: unknown;
+    agmarknet?: AgmarknetData;
   };
   ai_analysis?: {
     summary: string;
@@ -194,7 +206,7 @@ export interface NewsItem {
 
 export interface WeatherData {
   date: string;
-  temperature?: number;
+  agmarknet?: AgmarknetData;
   precipitation?: number;
   weather_description?: string;
 }

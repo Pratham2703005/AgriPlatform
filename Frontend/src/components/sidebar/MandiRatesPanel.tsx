@@ -12,23 +12,11 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { MandiDayData } from '@/types/farm';
-
-interface AgmarknetData {
-  success: boolean;
-  message: string;
-  title: string;
-  data: Array<{
-    key: string;
-    columns: Array<{ key: string; title: string }>;
-  }>;
-  rows: Array<Record<string, string | number | null>>;
-  average?: Record<string, string | number | null>;
-}
+import type { AgmarknetData, MandiDayData } from '@/types/farm';
 
 interface MandiRatesPanelProps {
   govdata: MandiDayData[];
-  agmarknet?: AgmarknetData;
+  agmarknet?: AgmarknetData | undefined;
 }
 
 type Unit = 'quintal' | 'kg';
@@ -55,7 +43,10 @@ const formatDateShort = (iso: string) => {
   }
 };
 
-export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmarknet }) => {
+export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({
+  govdata,
+  agmarknet,
+}) => {
   const [district, setDistrict] = useState<string>('');
   const [unit, setUnit] = useState<Unit>('quintal');
   const [districtInitialized, setDistrictInitialized] = useState(false);
@@ -65,16 +56,14 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
   const sortedDays = useMemo(
     () =>
       [...govdata]
-        .sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-        )
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(-7),
-    [govdata],
+    [govdata]
   );
 
   const districts = useMemo(() => {
     const set = new Set<string>();
-    sortedDays.forEach((day) => day.records.forEach((r) => set.add(r.district)));
+    sortedDays.forEach(day => day.records.forEach(r => set.add(r.district)));
     return Array.from(set).sort();
   }, [sortedDays]);
 
@@ -89,15 +78,13 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
     }
   }, [districtInitialized, districts, district]);
 
-
-
   const markets = useMemo(() => {
     if (!district) return [];
     const set = new Set<string>();
-    sortedDays.forEach((day) =>
+    sortedDays.forEach(day =>
       day.records
-        .filter((r) => r.district === district)
-        .forEach((r) => set.add(r.market)),
+        .filter(r => r.district === district)
+        .forEach(r => set.add(r.market))
     );
     return Array.from(set).sort();
   }, [sortedDays, district]);
@@ -105,11 +92,13 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
   // Build chart data: one row per day, one key per market (avg modal_price across varieties)
   const chartData = useMemo(() => {
     const divisor = unit === 'kg' ? 100 : 1;
-    return sortedDays.map((day) => {
-      const row: Record<string, string | number> = { date: formatDateShort(day.date) };
-      markets.forEach((m) => {
+    return sortedDays.map(day => {
+      const row: Record<string, string | number> = {
+        date: formatDateShort(day.date),
+      };
+      markets.forEach(m => {
         const matching = day.records.filter(
-          (r) => r.district === district && r.market === m,
+          r => r.district === district && r.market === m
         );
         if (matching.length > 0) {
           const avg =
@@ -125,26 +114,26 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
 
   if (!govdata || govdata.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Store className="h-12 w-12 text-neutral-300 mb-3" />
-        <p className="text-sm text-neutral-600">No mandi rate data available</p>
+      <div className='flex flex-col items-center justify-center py-8 text-center'>
+        <Store className='h-12 w-12 text-neutral-300 mb-3' />
+        <p className='text-sm text-neutral-600'>No mandi rate data available</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className='space-y-3'>
       {/* District */}
       <div>
-        <label className="block text-xs font-medium text-neutral-700 mb-1">
+        <label className='block text-xs font-medium text-neutral-700 mb-1'>
           District
         </label>
         <select
           value={district}
-          onChange={(e) => setDistrict(e.target.value)}
-          className="w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+          onChange={e => setDistrict(e.target.value)}
+          className='w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400'
         >
-          {districts.map((d) => (
+          {districts.map(d => (
             <option key={d} value={d}>
               {d}
             </option>
@@ -154,8 +143,10 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
 
       {/* Unit toggle */}
       <div>
-        <label className="block text-xs font-medium text-neutral-700 mb-1">Unit</label>
-        <div className="inline-flex rounded-lg border border-neutral-200 p-0.5 bg-neutral-50">
+        <label className='block text-xs font-medium text-neutral-700 mb-1'>
+          Unit
+        </label>
+        <div className='inline-flex rounded-lg border border-neutral-200 p-0.5 bg-neutral-50'>
           <button
             onClick={() => setUnit('quintal')}
             className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -180,30 +171,31 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
       </div>
 
       {/* Chart */}
-      <div className="border border-neutral-200 rounded-lg p-2 bg-white">
-        <div className="flex items-center justify-between mb-1.5 px-1">
-          <div className="text-xs font-semibold text-neutral-900">
+      <div className='border border-neutral-200 rounded-lg p-2 bg-white'>
+        <div className='flex items-center justify-between mb-1.5 px-1'>
+          <div className='text-xs font-semibold text-neutral-900'>
             Market Trends — 7 day modal price
           </div>
-          <div className="text-[10px] text-neutral-500">{unitLabel}</div>
+          <div className='text-[10px] text-neutral-500'>{unitLabel}</div>
         </div>
         {markets.length === 0 ? (
-          <div className="py-8 text-center text-sm text-neutral-500">
+          <div className='py-8 text-center text-sm text-neutral-500'>
             No markets available for this selection.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width='100%' height={240}>
             <LineChart
               data={chartData}
               margin={{ top: 8, right: 8, left: -12, bottom: 4 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+              <CartesianGrid strokeDasharray='3 3' stroke='#e5e5e5' />
+              <XAxis dataKey='date' tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip
                 contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                formatter={(v) => {
-                  const value = typeof v === 'number' ? v : parseFloat(v as string);
+                formatter={v => {
+                  const value =
+                    typeof v === 'number' ? v : parseFloat(v as string);
                   return Number.isNaN(value) ? 'N/A' : `${value} ${unitLabel}`;
                 }}
               />
@@ -211,7 +203,7 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
               {markets.map((m, i) => (
                 <Line
                   key={m}
-                  type="monotone"
+                  type='monotone'
                   dataKey={m}
                   stroke={LINE_COLORS[i % LINE_COLORS.length] as string}
                   strokeWidth={2}
@@ -227,8 +219,8 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
 
       {/* Markets list summary */}
       {markets.length > 0 && (
-        <div className="text-[11px] text-neutral-600">
-          <span className="font-medium text-neutral-800">Markets:</span>{' '}
+        <div className='text-[11px] text-neutral-600'>
+          <span className='font-medium text-neutral-800'>Markets:</span>{' '}
           {markets.join(', ')}
         </div>
       )}
@@ -239,20 +231,20 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
         agmarknet.rows &&
         agmarknet.rows.length > 0 &&
         district && (
-          <div className="border border-neutral-200 rounded-lg p-2 bg-white mt-4">
-            <div className="flex items-center justify-between mb-1.5 px-1">
-              <div className="text-xs font-semibold text-neutral-900">
+          <div className='border border-neutral-200 rounded-lg p-2 bg-white mt-4'>
+            <div className='flex items-center justify-between mb-1.5 px-1'>
+              <div className='text-xs font-semibold text-neutral-900'>
                 {district} Wholesale Prices
               </div>
-              <div className="text-[10px] text-neutral-500">Comparison</div>
+              <div className='text-[10px] text-neutral-500'>Comparison</div>
             </div>
             {(() => {
-              const districtData = (agmarknet.rows as Array<Record<string, string | number | null>>).find(
-                (row) => row.district === district
-              );
+              const districtData = (
+                agmarknet.rows as Array<Record<string, string | number | null>>
+              ).find(row => row.district === district);
               if (!districtData) {
                 return (
-                  <div className="py-4 text-center text-sm text-neutral-500">
+                  <div className='py-4 text-center text-sm text-neutral-500'>
                     No agmarknet data available for {district}
                   </div>
                 );
@@ -271,18 +263,20 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
                     .split('_')
                     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
                     .join(' ');
-                  
+
                   return {
                     month: monthName,
                     key,
-                    price: price ? +(((price as number) / divisor).toFixed(2)) : null,
+                    price: price
+                      ? +((price as number) / divisor).toFixed(2)
+                      : null,
                   };
                 })
-                .filter((d) => d.price !== null);
-              
+                .filter(d => d.price !== null);
+
               if (chartData.length === 0) {
                 return (
-                  <div className="py-4 text-center text-sm text-neutral-500">
+                  <div className='py-4 text-center text-sm text-neutral-500'>
                     No price data available.
                   </div>
                 );
@@ -290,39 +284,46 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({ govdata, agmar
 
               return (
                 <>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width='100%' height={200}>
                     <BarChart
                       data={chartData}
                       margin={{ top: 8, right: 8, left: -12, bottom: 30 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                      <XAxis
-                        dataKey="month"
-                        tick={{ fontSize: 9 }}
-                      />
+                      <CartesianGrid strokeDasharray='3 3' stroke='#e5e5e5' />
+                      <XAxis dataKey='month' tick={{ fontSize: 9 }} />
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip
                         contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                        formatter={(v) => {
-                          const value = typeof v === 'number' ? v : (typeof v === 'string' ? parseFloat(v) : 0);
-                          return Number.isNaN(value) ? 'N/A' : `${value} ${unitLabel}`;
+                        formatter={v => {
+                          const value =
+                            typeof v === 'number'
+                              ? v
+                              : typeof v === 'string'
+                                ? parseFloat(v)
+                                : 0;
+                          return Number.isNaN(value)
+                            ? 'N/A'
+                            : `${value} ${unitLabel}`;
                         }}
                       />
-                      <Bar dataKey="price" fill="#10b981" name="Price" />
+                      <Bar dataKey='price' fill='#10b981' name='Price' />
                     </BarChart>
                   </ResponsiveContainer>
-                  <div className="text-[10px] text-neutral-600 mt-2 px-1 space-y-1">
-                    {chartData.map((item) => (
+                  <div className='text-[10px] text-neutral-600 mt-2 px-1 space-y-1'>
+                    {chartData.map(item => (
                       <div key={item.key}>
-                        <span className="font-medium">{item.month}:</span> {item.price} {unitLabel}
+                        <span className='font-medium'>{item.month}:</span>{' '}
+                        {item.price} {unitLabel}
                       </div>
                     ))}
                     <div>
-                      <span className="font-medium">Previous Month Change:</span>{' '}
+                      <span className='font-medium'>
+                        Previous Month Change:
+                      </span>{' '}
                       {districtData.change_over_previous_month ?? 'N/A'}%
                     </div>
                     <div>
-                      <span className="font-medium">YoY Change:</span>{' '}
+                      <span className='font-medium'>YoY Change:</span>{' '}
                       {districtData.change_over_previous_year ?? 'N/A'}%
                     </div>
                   </div>
