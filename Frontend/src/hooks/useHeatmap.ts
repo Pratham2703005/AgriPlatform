@@ -3,6 +3,43 @@ import { FarmAPI } from '../services/farmApi';
 import { heatmapService } from '../services/fileDatabase'; // kept for guest mode (localStorage)
 import type { HeatmapData } from '../types/farm';
 
+type LegacyHeatmapData = HeatmapData & {
+  news_analysis?: string;
+  mandi_analysis?: string;
+};
+
+const normalizeHeatmapData = (raw: unknown): HeatmapData => {
+  const topLevel = (raw ?? {}) as Record<string, unknown>;
+  const nestedData =
+    topLevel.data && typeof topLevel.data === 'object'
+      ? (topLevel.data as Record<string, unknown>)
+      : null;
+
+  const source =
+    nestedData &&
+    ('predicted_yield' in nestedData ||
+      'masks' in nestedData ||
+      'pixel_counts' in nestedData)
+      ? (nestedData as unknown as LegacyHeatmapData)
+      : (topLevel as unknown as LegacyHeatmapData);
+
+  return {
+    ...source,
+    news_ai_analysis:
+      typeof source.news_ai_analysis === 'string'
+        ? source.news_ai_analysis
+        : typeof source.news_analysis === 'string'
+          ? source.news_analysis
+          : undefined,
+    mandi_ai_analysis:
+      typeof source.mandi_ai_analysis === 'string'
+        ? source.mandi_ai_analysis
+        : typeof source.mandi_analysis === 'string'
+          ? source.mandi_analysis
+          : undefined,
+  } as HeatmapData;
+};
+
 export interface UseHeatmapReturn {
   heatmapData: HeatmapData | null;
   loading: boolean;
@@ -41,7 +78,7 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
             // Load from MongoDB via backend
             const cached = await FarmAPI.getHeatmapCache(farmId);
             if (cached) {
-              setHeatmapData(cached.data);
+              setHeatmapData(normalizeHeatmapData(cached.data));
               setIsCached(true);
               setCachedAt(cached.cachedAt);
               console.log(
@@ -53,7 +90,7 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
             // Guest mode: fall back to localStorage
             const cached = await heatmapService.getByFarmId(farmId);
             if (cached) {
-              setHeatmapData(cached.data);
+              setHeatmapData(normalizeHeatmapData(cached.data));
               setIsCached(true);
               setCachedAt(cached.cachedAt);
               console.log(
@@ -113,7 +150,7 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
       const requestHeatmap = async (
         payload: ReturnType<typeof buildPayload>
       ): Promise<Response> => {
-        return fetch('http://127.0.0.1:8001/generate_heatmap_lite', {
+        return fetch('http://127.0.0.1:8100/generate_heatmap_lite', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -196,7 +233,8 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
           }
         }
 
-        const data: HeatmapData = await response.json();
+        const rawData = await response.json();
+        const data = normalizeHeatmapData(rawData);
         setHeatmapData(data);
         setIsCached(false);
         setCachedAt(null);

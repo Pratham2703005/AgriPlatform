@@ -317,6 +317,11 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
       ? 'Stress appears to be spreading from localized pockets. Check water distribution and nutrient uptake in weaker regions this week.'
       : 'Canopy behavior is balanced. Continue current schedule and monitor edges for early anomaly signals.';
 
+  const ndviAiSummary =
+    heatmapData.ai_analysis?.summary?.trim() ||
+    heatmapData.suggestions?.overall_assessment?.trim() ||
+    null;
+
   const comparisonText =
     typeof comparisonPct !== 'number'
       ? 'Comparison baseline is not available yet.'
@@ -498,6 +503,23 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {ndviAiSummary && (
+        <div className='rounded-xl border border-violet-200 bg-[linear-gradient(145deg,#f5f3ff_0%,#eef2ff_42%,#ffffff_100%)] p-2 shadow-sm transition-transform duration-300 hover:-translate-y-0.5'>
+          <div className='mb-1 flex items-center gap-1'>
+            <span className='inline-flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100'>
+              <Sparkles className='h-3 w-3 text-violet-700' />
+            </span>
+            <p className='text-[10px] font-semibold uppercase tracking-wide text-violet-700'>
+              AI NDVI Summary
+            </p>
+          </div>
+          <p className='rounded-md border border-violet-100 bg-white/90 px-1.5 py-1 text-[10px] leading-4 text-violet-900'>
+            {ndviAiSummary}
+          </p>
+        </div>
+      )}
+
       <div className='rounded-xl border border-emerald-200 bg-[linear-gradient(145deg,#f0fdf4_0%,#ffffff_55%,#ecfeff_100%)] p-2 shadow-sm transition-transform duration-300 hover:-translate-y-0.5'>
         <div className='mb-1 flex items-center justify-between gap-2'>
           <div className='flex items-center gap-1.5'>
