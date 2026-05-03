@@ -11,6 +11,7 @@ import type { LayerType } from '../components/map/HeatmapOverlay';
 import { ArrowLeft, Sprout, Lock } from 'lucide-react';
 import type { Farm } from '@/types/farm';
 import { toast } from 'robot-toast';
+import '@/styles/customToasts.css';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
@@ -113,6 +114,29 @@ export default function FarmDetail() {
       });
     }
   }, [heatmapError]);
+
+  // Display 7 toasts on page load with different images
+  useEffect(() => {
+    const toastConfigs = [
+      { message: '🥕 Carrot Farm Data Loaded', robotVariant: '/carrot-base.png' },
+      { message: '🌽 Corn Yield Analytics Ready', robotVariant: '/corn-base.png' },
+      { message: '🥔 Potato Database Connected', robotVariant: '/potato-base.png' },
+      { message: '🌾 Rice Forecasting Enabled', robotVariant: '/rice-base.png' },
+      { message: '🌾 Wheat Predictions Active', robotVariant: '/wheat-base.png' },
+      { message: '⚠️ Carrot Risk Assessment', robotVariant: '/carrot-error.png' },
+      { message: '⚠️ Corn Disease Detection', robotVariant: '/corn-error.png', type: 'warning' }
+    ];
+
+    toastConfigs.forEach((config, index) => {
+      setTimeout(() => {
+        toast.success({
+          message: config.message,
+          robotVariant: config.robotVariant,
+          autoClose: 0
+        });
+      }, index * 200);
+    });
+  }, []);
 
   // Show loader if loading or farms not loaded
   if (loading || !id || farms.length === 0) {
