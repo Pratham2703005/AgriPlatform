@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Info } from 'lucide-react';
+import type { RangeMeta } from '@/types/farm';
 
 export type MapLayerType = 'ndvi' | 'ndre' | 'ndwi' | 'anomaly';
+export type LayerViewMode = 'masks' | 'range';
 
 interface MaskOpacity {
   red?: number;
@@ -21,6 +23,11 @@ interface MapLayerSelectorProps {
   onLayerChange: (layer: MapLayerType) => void;
   maskOpacity: MaskOpacity;
   onOpacityChange: (maskId: string, opacity: number) => void;
+  viewMode?: LayerViewMode;
+  onViewModeChange?: (mode: LayerViewMode) => void;
+  rangeOpacity?: number;
+  onRangeOpacityChange?: (opacity: number) => void;
+  rangeMeta?: RangeMeta | null; // gradient meta for the active layer
 }
 
 const LAYER_CONFIG: Record<MapLayerType, { label: string; shortLabel: string; description: string; masks: string[] }> = {
@@ -111,6 +118,11 @@ export const MapLayerSelector: React.FC<MapLayerSelectorProps> = ({
   onLayerChange,
   maskOpacity,
   onOpacityChange,
+  viewMode = 'masks',
+  onViewModeChange,
+  rangeOpacity = 0.7,
+  onRangeOpacityChange,
+  rangeMeta,
 }) => {
   const getOpacity = (maskId: string): number => {
     return (maskOpacity[maskId as keyof MaskOpacity] ?? 0.7) * 100;
@@ -122,19 +134,58 @@ export const MapLayerSelector: React.FC<MapLayerSelectorProps> = ({
 
   const currentConfig = LAYER_CONFIG[activeLayer];
   const isAnomalyMode = activeLayer === 'anomaly';
+  const showViewToggle =
+    !isAnomalyMode && Boolean(onViewModeChange) && Boolean(rangeMeta);
+
+  const buildGradientCss = (meta: RangeMeta): string => {
+    if (!meta.stops.length) return 'linear-gradient(to right, #ddd, #888)';
+    const span = Math.max(meta.max - meta.min, 1e-6);
+    const parts = meta.stops.map(stop => {
+      const pct = Math.max(0, Math.min(100, ((stop.value - meta.min) / span) * 100));
+      return `${stop.color} ${pct.toFixed(2)}%`;
+    });
+    return `linear-gradient(to right, ${parts.join(', ')})`;
+  };
 
   return (
     <div className="fixed bottom-6 left-6 z-[1000] w-auto max-w-[520px]">
       <div className="bg-white rounded-xl shadow-lg border border-neutral-200 overflow-hidden">
         {/* Panel Content */}
         <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-3">
             <h4 className="text-sm font-semibold text-neutral-900">
               {currentConfig.label}
             </h4>
-            <span className="text-[10px] text-neutral-400 uppercase tracking-wide">
-              {currentConfig.description}
-            </span>
+            {showViewToggle ? (
+              <div className="inline-flex rounded-md border border-neutral-200 bg-neutral-50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => onViewModeChange?.('masks')}
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                    viewMode === 'masks'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
+                >
+                  Masks
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onViewModeChange?.('range')}
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                    viewMode === 'range'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
+                >
+                  Range
+                </button>
+              </div>
+            ) : (
+              <span className="text-[10px] text-neutral-400 uppercase tracking-wide">
+                {currentConfig.description}
+              </span>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -176,6 +227,58 @@ export const MapLayerSelector: React.FC<MapLayerSelectorProps> = ({
                       <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
                       <span className="text-[11px] text-neutral-600">Better than average</span>
                     </div>
+                  </div>
+                </div>
+              </>
+            ) : viewMode === 'range' && rangeMeta ? (
+              <>
+                {/* Single opacity slider for the gradient overlay */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium text-neutral-700">
+                      {rangeMeta.unit ?? 'Range'} Overlay
+                    </label>
+                    <span className="text-xs font-semibold text-neutral-600">
+                      {Math.round(rangeOpacity * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Math.round(rangeOpacity * 100)}
+                    onChange={(e) =>
+                      onRangeOpacityChange?.(Number(e.target.value) / 100)
+                    }
+                    className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                  />
+                </div>
+
+                {/* Color bar legend */}
+                <div className="pt-2 border-t border-neutral-100">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Info className="h-3.5 w-3.5 text-neutral-400" />
+                    <span className="text-[11px] font-medium text-neutral-500">
+                      {rangeMeta.unit ?? 'Index'} Scale
+                    </span>
+                  </div>
+                  <div
+                    className="h-3 w-full rounded border border-neutral-200"
+                    style={{ background: buildGradientCss(rangeMeta) }}
+                  />
+                  <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-600">
+                    <span>
+                      <span className="font-semibold text-neutral-800">
+                        {rangeMeta.min.toFixed(2)}
+                      </span>
+                      {rangeMeta.min_label ? ` · ${rangeMeta.min_label}` : ''}
+                    </span>
+                    <span className="text-right">
+                      {rangeMeta.max_label ? `${rangeMeta.max_label} · ` : ''}
+                      <span className="font-semibold text-neutral-800">
+                        {rangeMeta.max.toFixed(2)}
+                      </span>
+                    </span>
                   </div>
                 </div>
               </>

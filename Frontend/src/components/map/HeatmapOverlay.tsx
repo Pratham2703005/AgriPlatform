@@ -33,6 +33,8 @@ L.Icon.Default.mergeOptions({
 
 export type LayerType = 'ndvi' | 'ndwi' | 'ndre' | 'anomaly';
 
+export type LayerViewMode = 'masks' | 'range';
+
 interface HeatmapOverlayProps {
   coordinates: number[][]; // Array of [lng, lat] pairs
   heatmapData?: HeatmapData | null;
@@ -43,6 +45,8 @@ interface HeatmapOverlayProps {
   maskOpacity?: Record<string, number>; // Individual mask opacity: { red: 0.7, yellow: 0.6, ... }
   anomalyTileUrl?: string | undefined; // Tile URL for anomaly map
   focusRequestId?: number;
+  viewMode?: LayerViewMode; // 'masks' shows discrete colors, 'range' shows gradient
+  rangeOpacity?: number; // 0-1, only used in range mode
 }
 
 interface MaskOverlay {
@@ -188,6 +192,46 @@ const AnomalyImageOverlay: React.FC<{
   );
 };
 
+// Component to render a single continuous-gradient range mask for the
+// active layer. The PNG itself encodes the color ramp; the overlay just
+// drapes it over the field bounds at the chosen opacity.
+const RangeImageOverlay: React.FC<{
+  coordinates: number[][];
+  base64Data: string;
+  opacity: number;
+}> = ({ coordinates, base64Data, opacity }) => {
+  const getBounds = (): L.LatLngBounds | null => {
+    if (coordinates.length === 0) return null;
+
+    const leafletCoords: [number, number][] = coordinates
+      .filter(
+        (coord): coord is [number, number] =>
+          Array.isArray(coord) && coord.length >= 2
+      )
+      .map(coord => [coord[1], coord[0]]);
+
+    if (leafletCoords.length === 0) return null;
+
+    const lats = leafletCoords.map(coord => coord[0]);
+    const lngs = leafletCoords.map(coord => coord[1]);
+
+    const southWest = L.latLng(Math.min(...lats), Math.min(...lngs));
+    const northEast = L.latLng(Math.max(...lats), Math.max(...lngs));
+    return L.latLngBounds(southWest, northEast);
+  };
+
+  const bounds = getBounds();
+  if (!bounds || !base64Data) return null;
+
+  return (
+    <ImageOverlay
+      url={`data:image/png;base64,${base64Data}`}
+      bounds={bounds}
+      opacity={opacity}
+    />
+  );
+};
+
 // Component to handle image overlay bounds calculation
 const HeatmapImageOverlays: React.FC<{
   coordinates: number[][];
@@ -249,6 +293,8 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   maskOpacity = {},
   anomalyTileUrl,
   focusRequestId,
+  viewMode = 'masks',
+  rangeOpacity = 0.7,
 }) => {
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>(
     'hybrid'
@@ -496,12 +542,29 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
             />
           )}
 
-          {/* Heatmap Image Overlays — only the active layer's masks */}
-          {heatmapData && activeLayer !== 'anomaly' && (
+          {/* Heatmap Image Overlays — discrete masks for the active layer */}
+          {heatmapData && activeLayer !== 'anomaly' && viewMode === 'masks' && (
             <HeatmapImageOverlays
               coordinates={coordinates}
               masks={activeMasks}
               maskOpacity={maskOpacity}
+            />
+          )}
+
+          {/* Range gradient overlay for the active layer */}
+          {heatmapData && activeLayer !== 'anomaly' && viewMode === 'range' && (
+            <RangeImageOverlay
+              coordinates={coordinates}
+              base64Data={
+                (activeLayer === 'ndvi'
+                  ? heatmapData.masks?.range_mask_base64
+                  : activeLayer === 'ndwi'
+                    ? heatmapData['ndwi-masks']?.range_mask_base64
+                    : activeLayer === 'ndre'
+                      ? heatmapData['ndre-masks']?.range_mask_base64
+                      : '') ?? ''
+              }
+              opacity={rangeOpacity}
             />
           )}
 

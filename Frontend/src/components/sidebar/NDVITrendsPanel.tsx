@@ -27,16 +27,6 @@ interface NDVITrendsPanelProps {
   onViewStressMap?: () => void;
 }
 
-type RangeKey = '1M' | '3M' | '6M' | '1Y' | '3Y';
-
-const RANGE_DAYS: Record<RangeKey, number> = {
-  '1M': 30,
-  '3M': 90,
-  '6M': 180,
-  '1Y': 365,
-  '3Y': 1095,
-};
-
 const TREND_STYLES = {
   improving: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   stable: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -67,27 +57,10 @@ const HEALTH_STYLES: Record<string, string> = {
 const formatShortDate = (date: Date): string =>
   date.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 
-const formatAxisDate = (date: Date, range: RangeKey): string => {
-  if (range === '1M' || range === '3M') {
-    return date.toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: '2-digit',
-    });
-  }
-
-  if (range === '6M') {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      year: '2-digit',
-    });
-  }
-
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    year: 'numeric',
-  });
-};
+// One label per yearly sample - the year is the dimension that varies, the
+// month/day stays fixed because all 5 points are sampled at the same
+// calendar window.
+const formatYearLabel = (date: Date): string => String(date.getFullYear());
 
 const formatLongDate = (date: Date): string =>
   date.toLocaleDateString('en-US', {
@@ -122,11 +95,13 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
   heatmapData,
   onViewStressMap,
 }) => {
-  const [selectedRange, setSelectedRange] = React.useState<RangeKey>('1Y');
   const [chartType, setChartType] = React.useState<'line' | 'bar'>('line');
   const [showMoreInfo, setShowMoreInfo] = React.useState(false);
 
-  const rawTrendData = (heatmapData.anomaly?.ndvi_trend ?? [])
+  // Backend returns up to 5 yearly NDVI points - same calendar date as the
+  // current reference, sampled across the past 5 years. We render every
+  // point we receive; there is no time-window filter anymore.
+  const chartData = (heatmapData.anomaly?.ndvi_trend ?? [])
     .slice()
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(point => {
@@ -140,22 +115,12 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
       };
     });
 
-  const latestTimestamp = rawTrendData[rawTrendData.length - 1]?.timestamp;
-  const selectedTrendData = latestTimestamp
-    ? rawTrendData.filter(
-        d =>
-          latestTimestamp - d.timestamp <=
-          RANGE_DAYS[selectedRange] * 24 * 60 * 60 * 1000
-      )
-    : [];
-
-  const chartData =
-    selectedTrendData.length >= 2 ? selectedTrendData : rawTrendData;
-
   const chartDataWithLabels = chartData.map(point => ({
     ...point,
-    axisLabel: formatAxisDate(point.date, selectedRange),
+    axisLabel: formatYearLabel(point.date),
   }));
+
+  const yearsSpanned = chartData.length > 1 ? chartData.length - 1 : 0;
 
   const firstNdvi = chartData[0]?.ndvi;
   const lastNdvi = chartData[chartData.length - 1]?.ndvi;
@@ -186,12 +151,12 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
 
   const trendInsight =
     chartData.length < 2
-      ? 'Not enough NDVI points yet for a reliable health signal.'
+      ? 'Not enough yearly NDVI points yet for a reliable signal.'
       : trendKey === 'declining'
-        ? 'Health dropped recently; early stress signals are now visible.'
+        ? 'NDVI for this calendar window has fallen across the past few seasons.'
         : trendKey === 'improving'
-          ? 'Canopy condition is recovering with a steady positive trend.'
-          : 'Health is mostly stable with no major NDVI shocks.';
+          ? 'NDVI for this calendar window has been climbing year-over-year.'
+          : 'NDVI for this calendar window has held roughly steady year-over-year.';
 
   const latestNdviValue = chartData[chartData.length - 1]?.ndvi;
   const latestLabel = chartData[chartData.length - 1]?.longLabel;
@@ -289,37 +254,19 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
 
   const microInsight =
     !sharpestDrop || !strongestRecovery
-      ? 'Field is stable with no sudden NDVI shocks in this range.'
+      ? 'No sharp year-over-year NDVI swings in the 5-year window.'
       : sharpestDrop.delta <= -0.03
-        ? `Sudden drop detected around ${formatLongDate(sharpestDrop.date)}.`
+        ? `Sharpest drop landed in ${formatLongDate(sharpestDrop.date)}.`
         : strongestRecovery.delta >= 0.03
-          ? `Recovery signal observed around ${formatLongDate(strongestRecovery.date)}.`
-          : 'Field is stable with no sudden NDVI shocks in this range.';
+          ? `Strongest recovery landed in ${formatLongDate(strongestRecovery.date)}.`
+          : 'No sharp year-over-year NDVI swings in the 5-year window.';
 
-  const rangeWindowMs = RANGE_DAYS[selectedRange] * 24 * 60 * 60 * 1000;
-  const selectedStartTimestamp = chartData[0]?.timestamp;
-  const previousWindowData = selectedStartTimestamp
-    ? rawTrendData.filter(
-        point =>
-          point.timestamp < selectedStartTimestamp &&
-          point.timestamp >= selectedStartTimestamp - rangeWindowMs
-      )
-    : [];
-  const previousAverage =
-    previousWindowData.length > 0
-      ? previousWindowData.reduce((sum, point) => sum + point.ndvi, 0) /
-        previousWindowData.length
-      : null;
-  const currentAverage =
-    pointCount > 0
-      ? chartData.reduce((sum, point) => sum + point.ndvi, 0) / pointCount
-      : null;
-  const comparisonPct =
-    typeof currentAverage === 'number' &&
-    typeof previousAverage === 'number' &&
-    Math.abs(previousAverage) > 0.0001
-      ? ((currentAverage - previousAverage) / Math.abs(previousAverage)) * 100
-      : null;
+  const earliestPoint = chartData[0];
+  const latestPoint = chartData[chartData.length - 1];
+  const earliestYear = earliestPoint
+    ? earliestPoint.date.getFullYear()
+    : null;
+  const latestYear = latestPoint ? latestPoint.date.getFullYear() : null;
 
   const impactText =
     trendKey === 'declining' && stressedPercent >= 40
@@ -330,12 +277,17 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
           ? 'Recovery is underway; stable irrigation can preserve this momentum.'
           : 'Stable health now; targeted scouting can prevent sudden stress spread.';
 
+  // Same-month NDVI compared across the earliest and latest year in the
+  // 5-year window. No fabricated baseline - this is just first vs last.
   const comparisonText =
-    typeof comparisonPct !== 'number'
-      ? 'Comparison baseline is not available yet.'
-      : comparisonPct >= 0
-        ? `Compared to the previous ${selectedRange}, NDVI is up ${comparisonPct.toFixed(1)}%.`
-        : `Compared to the previous ${selectedRange}, NDVI is down ${Math.abs(comparisonPct).toFixed(1)}%.`;
+    earliestYear === null ||
+    latestYear === null ||
+    earliestYear === latestYear ||
+    chartData.length < 2
+      ? 'Need NDVI from at least two years to compare year-over-year.'
+      : changePct >= 0
+        ? `NDVI is up ${changePct.toFixed(1)}% in ${latestYear} vs ${earliestYear} for the same calendar window.`
+        : `NDVI is down ${Math.abs(changePct).toFixed(1)}% in ${latestYear} vs ${earliestYear} for the same calendar window.`;
 
   const latestForForecast =
     typeof latestNdviValue === 'number' ? latestNdviValue : 0.5;
@@ -489,13 +441,17 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
 
           <div className='rounded-md bg-white/15 px-1.5 py-1 backdrop-blur'>
             <p className='text-[9px] text-emerald-100'>
-              Trend ({selectedRange})
+              {yearsSpanned > 0 ? `${yearsSpanned}-yr change` : 'Yearly change'}
             </p>
             <p className='text-sm font-bold leading-4'>
               {change >= 0 ? '+' : '-'}
               {Math.abs(changePct).toFixed(1)}%
             </p>
-            <p className='text-[9px] text-emerald-100'>vs period start</p>
+            <p className='text-[9px] text-emerald-100'>
+              {earliestYear && latestYear && earliestYear !== latestYear
+                ? `${earliestYear} → ${latestYear}`
+                : 'same calendar window'}
+            </p>
           </div>
 
           <div className='rounded-md bg-white/15 px-1.5 py-1 backdrop-blur'>
@@ -524,22 +480,9 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
         </div>
 
         <div className='mb-1 flex flex-wrap items-center justify-between gap-1.5'>
-          <div className='flex flex-wrap gap-1'>
-            {(['1M', '3M', '6M', '1Y', '3Y'] as RangeKey[]).map(range => (
-              <button
-                key={range}
-                type='button'
-                onClick={() => setSelectedRange(range)}
-                className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold transition-colors ${
-                  selectedRange === range
-                    ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
-                }`}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
+          <p className='text-[10px] text-neutral-600'>
+            Same-calendar NDVI, last 5 years
+          </p>
           <div className='inline-flex rounded-lg border border-neutral-200 bg-white p-0.5'>
             <button
               type='button'
@@ -996,8 +939,11 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                 </span>
               </div>
               <p className='text-[10px] leading-4 text-neutral-800'>
-                {change >= 0 ? '↑' : '↓'} {Math.abs(changePct).toFixed(1)}% in
-                the last {selectedRange}. {microInsight}
+                {change >= 0 ? '↑' : '↓'} {Math.abs(changePct).toFixed(1)}%
+                {earliestYear && latestYear && earliestYear !== latestYear
+                  ? ` from ${earliestYear} to ${latestYear}`
+                  : ' across the available years'}
+                . {microInsight}
               </p>
               <p className='mt-1 rounded-md border border-neutral-200 bg-white/85 px-1.5 py-1 text-[9px] leading-4 text-neutral-600'>
                 {comparisonText}

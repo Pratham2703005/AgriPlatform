@@ -20,6 +20,18 @@ export interface FarmFormData {
   description?: string;
 }
 
+export interface RangeMeta {
+  min: number;
+  max: number;
+  unit?: string;
+  min_label?: string;
+  max_label?: string;
+  stops: Array<{
+    value: number;
+    color: string;
+  }>;
+}
+
 export interface AgmarknetData {
   success: boolean;
   message: string;
@@ -103,17 +115,23 @@ export interface HeatmapData {
     red_mask_base64: string;
     yellow_mask_base64: string;
     green_mask_base64: string;
+    range_mask_base64?: string;
+    range_meta?: RangeMeta;
   };
   'ndwi-masks'?: Partial<{
     brown_mask_base64: string;
     yellow_mask_base64: string;
     light_blue_mask_base64: string;
+    range_mask_base64: string;
+    range_meta: RangeMeta;
   }>;
   'ndre-masks'?: Partial<{
     purple_mask_base64: string;
     pink_mask_base64: string;
     light_green_mask_base64: string;
     dark_green_mask_base64: string;
+    range_mask_base64: string;
+    range_meta: RangeMeta;
   }>;
   anomaly?: {
     tile_urls?: {

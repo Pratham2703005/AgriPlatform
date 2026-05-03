@@ -9,6 +9,7 @@ import { LeafletMap } from '../components/map/LeafletMap';
 import { ArrowLeft, Sprout, MapPin, Calendar, Save, X } from 'lucide-react';
 import { formatHectares } from '@/utils';
 import { toast } from 'robot-toast';
+import { heatmapService } from '../services/fileDatabase';
 
 export default function EditFarm() {
   const { id } = useParams<{ id: string }>();
@@ -172,6 +173,15 @@ export default function EditFarm() {
         coordinates,
         area,
       });
+      // Drop the cached heatmap so the detail page refetches fresh analysis
+      // for the new boundary/dates/crop instead of showing stale imagery.
+      // The backend already unsets the MongoDB cache as part of updateFarm;
+      // this call clears the guest-mode localStorage cache.
+      try {
+        await heatmapService.clearByFarmId(farm.id);
+      } catch (cacheErr) {
+        console.error('Error clearing local heatmap cache:', cacheErr);
+      }
       toast.success({
         message: 'Farm updated successfully!',
         robotVariant: '/wheat-base.png',

@@ -44,8 +44,10 @@ export default function FarmDetail() {
     pink: 0.7,
     light_green: 0.7,
     dark_green: 0.7,
-    anomaly: 1.0,
+    anomaly: 0.7,
   });
+  const [viewMode, setViewMode] = useState<'masks' | 'range'>('masks');
+  const [rangeOpacity, setRangeOpacity] = useState(0.7);
 
   // Set farm when farms are loaded
   useEffect(() => {
@@ -232,6 +234,17 @@ export default function FarmDetail() {
 
   const anomalyTileUrl = heatmapData?.anomaly?.tile_urls?.anomaly_heatmap;
 
+  // Pick the gradient meta for whichever layer is active. Anomaly has its
+  // own overlay/legend so it falls through to null and the toggle is hidden.
+  const activeRangeMeta =
+    activeLayer === 'ndvi'
+      ? (heatmapData?.masks?.range_meta ?? null)
+      : activeLayer === 'ndwi'
+        ? (heatmapData?.['ndwi-masks']?.range_meta ?? null)
+        : activeLayer === 'ndre'
+          ? (heatmapData?.['ndre-masks']?.range_meta ?? null)
+          : null;
+
   return (
     <div className='flex h-screen bg-neutral-900 overflow-hidden'>
       {/* Back Button (fixed top-left, above map) */}
@@ -255,6 +268,8 @@ export default function FarmDetail() {
           maskOpacity={maskOpacity}
           anomalyTileUrl={anomalyTileUrl}
           focusRequestId={mapFocusRequestId}
+          viewMode={viewMode}
+          rangeOpacity={rangeOpacity}
         />
 
         {/* Map Layer Selector (Bottom-Left) */}
@@ -264,6 +279,11 @@ export default function FarmDetail() {
             onLayerChange={setActiveLayer}
             maskOpacity={maskOpacity}
             onOpacityChange={handleOpacityChange}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            rangeOpacity={rangeOpacity}
+            onRangeOpacityChange={setRangeOpacity}
+            rangeMeta={activeRangeMeta}
           />
         )}
 

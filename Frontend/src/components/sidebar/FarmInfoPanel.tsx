@@ -8,7 +8,6 @@ import {
   Calendar,
   MapPin,
   Navigation,
-  Clock3,
   ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
@@ -282,11 +281,25 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
               <div className='flex items-center justify-between gap-2'>
                 <span className='text-emerald-100'>Overall health</span>
                 <span
-                  className={`inline-flex items-center whitespace-nowrap rounded-full border bg-white/90 px-2 py-0.5 text-[10px] font-semibold ${
+                  className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border bg-white/90 px-2 py-0.5 text-[10px] font-semibold ${
                     HEALTH_STYLES[overallHealth] ?? HEALTH_STYLES.Moderate
                   }`}
+                  title={
+                    healthTrend.direction
+                      ? `${healthTrend.direction === 'improving' ? 'Improving' : healthTrend.direction === 'declining' ? 'Declining' : 'Stable'} (${healthTrend.deltaPct >= 0 ? '+' : ''}${healthTrend.deltaPct.toFixed(1)}% NDVI vs prior baseline)`
+                      : 'Trend unavailable'
+                  }
                 >
                   {overallHealth}
+                  {healthTrend.direction === 'improving' && (
+                    <ArrowUpRight className='h-3 w-3 text-emerald-700' />
+                  )}
+                  {healthTrend.direction === 'declining' && (
+                    <ArrowDownRight className='h-3 w-3 text-red-700' />
+                  )}
+                  {healthTrend.direction === 'stable' && (
+                    <Minus className='h-3 w-3 text-neutral-500' />
+                  )}
                 </span>
               </div>
               <div className='flex items-center justify-between gap-2'>
@@ -331,13 +344,6 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
               style={{ width: `${riskScore}%` }}
             />
           </div>
-          <p className='mt-1.5 text-[11px] leading-4 text-neutral-600'>
-            {riskLabel === 'High'
-              ? 'High stress pockets detected. Action needed soon.'
-              : riskLabel === 'Medium'
-                ? 'Moderate stress pockets present. Keep monitoring.'
-                : 'Field condition is stable.'}
-          </p>
           <div className='mt-3 h-2 overflow-hidden rounded-full bg-neutral-100'>
             <div className='flex h-full w-full'>
               <div
@@ -374,91 +380,7 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
         </div>
       </div>
 
-      {!showDetails && (
-        <div className='relative overflow-hidden rounded-xl border border-emerald-200/70 bg-gradient-to-b from-white to-emerald-50/40 p-2.5 shadow-sm'>
-          <div className='pointer-events-none absolute inset-0 backdrop-blur-[1px]' />
-
-          <div className='pointer-events-none absolute -bottom-10 left-0 right-0 h-28 bg-gradient-to-t from-emerald-300/50 via-emerald-200/25 to-transparent blur-2xl' />
-          <div className='pointer-events-none absolute -bottom-3 left-8 right-8 h-10 rounded-full bg-emerald-300/25 blur-xl' />
-
-          <div className='relative pb-10'>
-            <div className='relative overflow-hidden p-0.5'>
-              <div className='mb-1.5 flex items-center gap-1.5'>
-                <Calendar className='h-3.5 w-3.5 text-sky-600' />
-                <h3 className='text-xs font-semibold text-neutral-900'>
-                  Crop Timeline
-                </h3>
-              </div>
-
-              <div className='grid grid-cols-2 gap-1.5 text-[10px]'>
-                <div className='rounded-md bg-sky-50 p-1.5'>
-                  <p className='text-sky-700'>Planting</p>
-                  <p className='font-semibold text-sky-900'>
-                    {formatDate(farm.plantingDate)}
-                  </p>
-                </div>
-                <div className='rounded-md bg-indigo-50 p-1.5'>
-                  <p className='text-indigo-700'>Harvest</p>
-                  <p className='font-semibold text-indigo-900'>
-                    {formatDate(farm.harvestDate)}
-                  </p>
-                </div>
-              </div>
-
-              <div className='mt-1.5 space-y-0.5 text-[10px] text-neutral-700'>
-                <p className='flex items-center gap-1'>
-                  <Clock3 className='h-3 w-3' /> Stage:{' '}
-                  <span className='font-semibold'>{cropStage}</span>
-                </p>
-                <p>
-                  Remaining:{' '}
-                  <span className='font-semibold'>
-                    {isCycleCompleted ? 'Completed' : `${daysRemaining}d`}
-                  </span>
-                </p>
-              </div>
-
-              {isCycleCompleted ? (
-                <div className='mt-1.5 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800'>
-                  Harvest cycle completed
-                </div>
-              ) : (
-                <div className='mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-100'>
-                  <div
-                    className='h-full bg-sky-500'
-                    style={{ width: `${cycleProgress}%` }}
-                  />
-                </div>
-              )}
-
-              <div className='pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-white/95 via-white/80 to-transparent backdrop-blur-[2px]' />
-            </div>
-          </div>
-
-          <button
-            type='button'
-            onClick={() => setShowDetails(true)}
-            className='absolute bottom-2.5 left-1/2 -translate-x-1/2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-emerald-400/40 hover:bg-emerald-500 transition-colors'
-          >
-            More info
-            <ChevronRight className='ml-1.5 h-4 w-4' />
-          </button>
-        </div>
-      )}
-
-      {showDetails && (
-        <>
-          <div className='flex justify-end -mt-1'>
-            <button
-              type='button'
-              onClick={() => setShowDetails(false)}
-              className='inline-flex items-center text-[11px] font-semibold text-neutral-600 hover:text-neutral-900'
-            >
-              Hide extra info
-              <ChevronRight className='ml-1 h-3.5 w-3.5 rotate-90' />
-            </button>
-          </div>
-          <div className='rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200'>
+      <div className='rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200'>
             <div className='mb-2.5 flex items-center justify-between gap-2'>
               <div className='flex items-center gap-1.5'>
                 <Calendar className='h-4 w-4 text-sky-600' />
@@ -599,8 +521,6 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
               </button>
             </div>
           </div>
-        </>
-      )}
     </div>
   );
 };

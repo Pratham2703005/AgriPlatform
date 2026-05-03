@@ -323,11 +323,17 @@ const updateFarm = async (req, res) => {
       };
     }
 
-    // Update farm
-    const updatedFarm = await Farm.findByIdAndUpdate(farmId, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    // Update farm. Also drop the cached heatmap so the next view of this
+    // farm refetches fresh imagery/AI output instead of showing analysis
+    // tied to the previous boundary, dates, or crop.
+    const updatedFarm = await Farm.findByIdAndUpdate(
+      farmId,
+      { ...updateData, $unset: { heatmapCache: "" } },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     const responseData = {
       farm: updatedFarm
