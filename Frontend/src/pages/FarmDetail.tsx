@@ -108,71 +108,11 @@ export default function FarmDetail() {
     if (heatmapError) {
       toast.error({
         message: heatmapError,
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
     }
   }, [heatmapError]);
-
-  // Display 7 toasts on page load with different types and custom styles
-  useEffect(() => {
-    const toastConfigs = [
-      {
-        type: 'success' as const,
-        message: 'Rice Forecasting Enabled',
-        robotVariant: '/rice-base.png',
-        style: {
-          background: 'linear-gradient(135deg, #6ee7b7 0%, #10b981 100%)',
-          color: '#fff',
-          borderLeft: '4px solid #059669',
-          borderRadius: '14px',
-          boxShadow: '0 10px 30px -10px rgba(16,185,129,0.5)',
-        }
-      },
-      {
-        type: 'success' as const,
-        message: 'Wheat Predictions Active',
-        robotVariant: '/wheat-base.png',
-        style: {
-          background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-          color: '#fff',
-          borderLeft: '4px solid #92400e',
-          borderRadius: '14px',
-          boxShadow: '0 10px 30px -10px rgba(217,119,6,0.5)',
-        }
-      },
-      {
-        type: 'warning' as const,
-        message: 'Carrot Risk Assessment',
-        robotVariant: '/carrot-error.png',
-        style: {
-          background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-          color: '#fff',
-          borderLeft: '4px solid #c2410c',
-          borderRadius: '14px',
-          boxShadow: '0 10px 30px -10px rgba(249,115,22,0.5)',
-        }
-      },
-    ];
-
-    toastConfigs.forEach((config, index) => {
-      setTimeout(() => {
-        const toastMethod = {
-          success: toast.success,
-          error: toast.error,
-          warning: toast.warning,
-          info: toast.info
-        }[config.type];
-
-        toastMethod({
-          message: config.message,
-          robotVariant: config.robotVariant,
-          autoClose: 0,
-          style: config.style
-        });
-      }, index * 200);
-    });
-  }, []);
 
   // Show loader if loading or farms not loaded
   if (loading || !id || farms.length === 0) {
@@ -273,35 +213,12 @@ export default function FarmDetail() {
         await deleteFarm(farm?.id || '');
         toast.success({
           message: 'Farm deleted successfully!',
-          robotVariant: '/corn-base.png',
+          robotVariant: '/wheat-base.png',
           autoClose: 3000,
         });
         setTimeout(() => navigate('/dashboard'), 500);
       } catch (error) {
         console.error('Error deleting farm:', error);
-      }
-    }
-  };
-
-  const handleRefreshAnalysis = () => {
-    if (farm && farm.coordinates && farm.coordinates.length > 0) {
-      const coordinates = farm.coordinates
-        .filter(coord => coord.length >= 2)
-        .map(coord => [coord[0]!, coord[1]!]);
-      if (coordinates.length > 0) {
-        toast.success({
-          message: 'Refreshing analysis...',
-          robotVariant: '/corn-base.png',
-          autoClose: 3000,
-        });
-        fetchHeatmapData(
-          coordinates,
-          0.5,
-          0.75,
-          farm.plantingDate,
-          farm.harvestDate,
-          farm.crop
-        );
       }
     }
   };
@@ -368,7 +285,6 @@ export default function FarmDetail() {
               setActiveLayer('anomaly');
               setMapFocusRequestId(prev => prev + 1);
             }}
-            onRefreshAnalysis={handleRefreshAnalysis}
             onRefreshWeather={() => {
               if (farm && farm.coordinates && farm.coordinates.length > 0) {
                 const validCoords = farm.coordinates.filter(c => c.length >= 2);
@@ -398,7 +314,6 @@ export default function FarmDetail() {
             onDownloadMap={() => {
               console.log('Download map');
             }}
-            analysisLoading={heatmapLoading}
             weatherLoading={calendarLoading}
             exportLoading={false}
           />

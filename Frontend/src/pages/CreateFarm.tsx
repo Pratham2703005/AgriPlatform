@@ -58,7 +58,7 @@ export const CreateFarm: React.FC = () => {
     if (error) {
       toast.error({
         message: error,
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
     }
@@ -68,7 +68,7 @@ export const CreateFarm: React.FC = () => {
     if (coordinates.length === 0) {
       toast.error({
         message: 'Please draw your farm boundary on the map',
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
       return;
@@ -87,7 +87,7 @@ export const CreateFarm: React.FC = () => {
       await addFarm(data, coordinates, area);
       toast.success({
         message: 'Farm created successfully!',
-        robotVariant: '/corn-base.png',
+        robotVariant: '/wheat-base.png',
         autoClose: 3000,
       });
       setTimeout(() => navigate('/dashboard'), 500);

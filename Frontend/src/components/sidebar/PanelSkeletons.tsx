@@ -70,37 +70,6 @@ export const FarmOverviewSkeleton: React.FC = () => (
   </div>
 );
 
-export const AIAnalysisSkeleton: React.FC = () => (
-  <div className='space-y-3'>
-    <SkeletonCard>
-      <div className='flex items-center justify-between'>
-        <SkeletonBlock className='h-4 w-32' />
-        <SkeletonBlock className='h-5 w-16 rounded-full' />
-      </div>
-      <SkeletonBlock className='mt-3 h-3 w-full' />
-      <SkeletonBlock className='mt-1.5 h-3 w-11/12' />
-      <SkeletonBlock className='mt-1.5 h-3 w-4/5' />
-    </SkeletonCard>
-
-    <SkeletonCard>
-      <SkeletonBlock className='h-4 w-28' />
-      <div className='mt-2.5 space-y-2'>
-        <SkeletonBlock className='h-12 w-full' />
-        <SkeletonBlock className='h-12 w-full' />
-      </div>
-    </SkeletonCard>
-
-    <SkeletonCard>
-      <SkeletonBlock className='h-4 w-36' />
-      <div className='mt-2.5 space-y-1.5'>
-        <SkeletonBlock className='h-3 w-full' />
-        <SkeletonBlock className='h-3 w-5/6' />
-        <SkeletonBlock className='h-3 w-3/4' />
-      </div>
-    </SkeletonCard>
-  </div>
-);
-
 export const NDVITrendsSkeleton: React.FC = () => (
   <div className='space-y-3'>
     <SkeletonCard>

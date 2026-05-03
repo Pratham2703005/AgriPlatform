@@ -18,7 +18,6 @@ import {
   BarChart3,
   ChevronRight,
   LineChart as LineChartIcon,
-  Sparkles,
   TrendingUp,
 } from 'lucide-react';
 import type { HeatmapData } from '@/types/farm';
@@ -220,13 +219,33 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
 
   const validPixels = Math.max(1, heatmapData.pixel_counts.valid || 0);
   const stressedPercent = (heatmapData.pixel_counts.red / validPixels) * 100;
+  const moderatePercent =
+    (heatmapData.pixel_counts.yellow / validPixels) * 100;
 
-  const topIssue = heatmapData.ai_analysis?.issues?.[0];
+  // Derive a top issue from pixel stats only (no fabricated diagnosis).
+  const topIssue: {
+    name: string;
+    affected_area_pct: number;
+    priority: 'High' | 'Medium' | 'Low';
+  } | null =
+    stressedPercent >= 5
+      ? {
+          name: 'Stressed area',
+          affected_area_pct: stressedPercent,
+          priority: stressedPercent >= 35 ? 'High' : 'Medium',
+        }
+      : moderatePercent >= 20
+        ? {
+            name: 'Moderate-health area',
+            affected_area_pct: moderatePercent,
+            priority: 'Medium',
+          }
+        : null;
   const keyIssueText = topIssue
-    ? `${topIssue.affected_area_pct.toFixed(1)}% of field impacted by ${topIssue.name.toLowerCase()}.`
+    ? `${topIssue.affected_area_pct.toFixed(1)}% of field is ${topIssue.name.toLowerCase()}.`
     : stressedPercent >= 40
       ? `${stressedPercent.toFixed(1)}% of the field currently appears stressed.`
-      : 'No major stress cluster detected in the latest analysis.';
+      : 'No major stress cluster detected in the pixel breakdown.';
 
   const pointCount = chartData.length;
   const averageNdvi =
@@ -311,17 +330,6 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
           ? 'Recovery is underway; stable irrigation can preserve this momentum.'
           : 'Stable health now; targeted scouting can prevent sudden stress spread.';
 
-  const aiInsight = topIssue
-    ? `${topIssue.name} pressure is expanding across ${topIssue.affected_area_pct.toFixed(1)}% of the field. Prioritize treatment in that zone within 3-5 days.`
-    : trendKey === 'declining'
-      ? 'Stress appears to be spreading from localized pockets. Check water distribution and nutrient uptake in weaker regions this week.'
-      : 'Canopy behavior is balanced. Continue current schedule and monitor edges for early anomaly signals.';
-
-  const ndviAiSummary =
-    heatmapData.ai_analysis?.summary?.trim() ||
-    heatmapData.suggestions?.overall_assessment?.trim() ||
-    null;
-
   const comparisonText =
     typeof comparisonPct !== 'number'
       ? 'Comparison baseline is not available yet.'
@@ -348,28 +356,26 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
     pessimistic: Math.max(0, latestForForecast - 0.05),
   };
 
-  const aiConfidenceText =
-    heatmapData.ai_analysis?.confidence === 'High'
-      ? '82%'
-      : heatmapData.ai_analysis?.confidence === 'Medium'
-        ? '71%'
-        : heatmapData.ai_analysis?.confidence === 'Low'
-          ? '60%'
-          : trendKey === 'stable'
-            ? '74%'
-            : '78%';
-
-  const aiHealth = heatmapData.ai_analysis?.overall_health ?? 'Moderate';
-  const aiPriority = heatmapData.ai_analysis?.priority ?? 'Medium';
-  const immediateActions = (
-    heatmapData.ai_analysis?.immediate_actions ??
-    heatmapData.suggestions?.immediate_actions ??
-    []
-  ).slice(0, 2);
+  // Risk derived directly from NDVI pixel distribution.
   const riskScore = Math.max(
     0,
-    Math.min(100, Number(heatmapData.ai_analysis?.risk_score ?? 0))
+    Math.min(100, stressedPercent * 0.7 + moderatePercent * 0.3)
   );
+
+  const derivedHealth =
+    riskScore > 50
+      ? 'Critical'
+      : riskScore > 35
+        ? 'Poor'
+        : riskScore > 20
+          ? 'Moderate'
+          : riskScore > 10
+            ? 'Good'
+            : 'Excellent';
+  const derivedPriority: 'High' | 'Medium' | 'Low' =
+    riskScore >= 35 ? 'High' : riskScore >= 15 ? 'Medium' : 'Low';
+  const aiHealth = derivedHealth;
+  const aiPriority = derivedPriority;
   const riskColor =
     riskScore <= 30
       ? 'bg-emerald-500'
@@ -384,7 +390,6 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
     title: string;
     priority: 'High' | 'Medium' | 'Low';
     urgency: string;
-    confidence?: string;
   }> = [
     {
       title:
@@ -396,7 +401,6 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
         trendKey === 'declining' || hasHighStress
           ? 'Do within 24-48h'
           : 'Do within 3-5 days',
-      confidence: aiConfidenceText,
     },
     {
       title: topIssue ? `${topIssue.name} Control` : 'Nitrogen Boost',
@@ -503,22 +507,6 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
           </div>
         </div>
       </div>
-
-      {ndviAiSummary && (
-        <div className='rounded-xl border border-violet-200 bg-[linear-gradient(145deg,#f5f3ff_0%,#eef2ff_42%,#ffffff_100%)] p-2 shadow-sm transition-transform duration-300 hover:-translate-y-0.5'>
-          <div className='mb-1 flex items-center gap-1'>
-            <span className='inline-flex h-5 w-5 items-center justify-center rounded-full border border-violet-200 bg-violet-100'>
-              <Sparkles className='h-3 w-3 text-violet-700' />
-            </span>
-            <p className='text-[10px] font-semibold uppercase tracking-wide text-violet-700'>
-              AI NDVI Summary
-            </p>
-          </div>
-          <p className='rounded-md border border-violet-100 bg-white/90 px-1.5 py-1 text-[10px] leading-4 text-violet-900'>
-            {ndviAiSummary}
-          </p>
-        </div>
-      )}
 
       <div className='rounded-xl border border-emerald-200 bg-[linear-gradient(145deg,#f0fdf4_0%,#ffffff_55%,#ecfeff_100%)] p-2 shadow-sm transition-transform duration-300 hover:-translate-y-0.5'>
         <div className='mb-1 flex items-center justify-between gap-2'>
@@ -834,15 +822,15 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                   </p>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
-                  <p className='text-neutral-500'>AI Confidence</p>
+                  <p className='text-neutral-500'>Stress Area</p>
                   <p className='font-semibold text-neutral-900'>
-                    {aiConfidenceText}
+                    {stressedPercent.toFixed(1)}%
                   </p>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
-                  <p className='text-neutral-500'>Immediate Action</p>
+                  <p className='text-neutral-500'>Moderate Area</p>
                   <p className='font-semibold text-neutral-900'>
-                    {immediateActions[0] ?? 'No immediate action flagged yet.'}
+                    {moderatePercent.toFixed(1)}%
                   </p>
                 </div>
               </div>
@@ -923,9 +911,9 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                   </span>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
-                  <p className='text-neutral-500'>AI Confidence</p>
+                  <p className='text-neutral-500'>Stress Area</p>
                   <p className='font-semibold text-neutral-900'>
-                    {aiConfidenceText}
+                    {stressedPercent.toFixed(1)}%
                   </p>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
@@ -935,9 +923,9 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                   </p>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
-                  <p className='text-neutral-500'>Immediate Action</p>
+                  <p className='text-neutral-500'>Moderate Area</p>
                   <p className='font-semibold text-neutral-900'>
-                    {immediateActions[0] ?? 'No immediate action flagged yet.'}
+                    {moderatePercent.toFixed(1)}%
                   </p>
                 </div>
               </div>
@@ -963,25 +951,6 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                   {Math.abs(recentDelta).toFixed(3)}
                 </p>
               </div>
-            </div>
-
-            <div className='rounded-xl border border-sky-200 bg-[linear-gradient(155deg,#ecfeff_0%,#f0f9ff_42%,#ffffff_100%)] p-2 shadow-sm transition-transform duration-300 hover:-translate-y-0.5'>
-              <div className='mb-1 flex items-center justify-between'>
-                <div className='inline-flex items-center gap-1'>
-                  <span className='inline-flex h-5 w-5 items-center justify-center rounded-full border border-sky-200 bg-sky-100'>
-                    <Sparkles className='h-3 w-3 text-sky-700' />
-                  </span>
-                  <p className='text-[10px] font-semibold uppercase tracking-wide text-sky-700'>
-                    AI Insight
-                  </p>
-                </div>
-                <span className='rounded-full border border-sky-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-sky-700'>
-                  Live
-                </span>
-              </div>
-              <p className='rounded-md border border-sky-100 bg-white/85 px-1.5 py-1 text-[10px] leading-4 text-sky-900'>
-                {aiInsight}
-              </p>
             </div>
 
             <div className='rounded-xl border border-amber-200 bg-[linear-gradient(155deg,#fffbeb_0%,#fff7ed_45%,#ffffff_100%)] p-2 shadow-sm transition-transform duration-300 hover:-translate-y-0.5'>

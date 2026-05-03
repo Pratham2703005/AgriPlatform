@@ -18,7 +18,7 @@ export default function LoginPage() {
     if (error) {
       toast.error({
         message: error,
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
     }
@@ -34,7 +34,7 @@ export default function LoginPage() {
     if (result.success) {
       toast.success({
         message: 'Login successful!',
-        robotVariant: '/corn-base.png',
+        robotVariant: '/wheat-base.png',
         autoClose: 3000,
       });
       // Wait a moment to ensure auth state is fully updated

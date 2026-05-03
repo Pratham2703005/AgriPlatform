@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Home,
-  Activity,
   TrendingUp,
   Cloud,
   Download,
@@ -13,7 +12,6 @@ import {
 import type { Farm, HeatmapData } from '@/types/farm';
 import type { WeatherCalendarData } from '@/hooks/useWeatherCalendar';
 import { FarmOverviewPanel } from './FarmInfoPanel';
-import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { NDVITrendsPanel } from './NDVITrendsPanel';
 import { FarmWeatherCalendar } from '../FarmWeatherCalendar';
 import { ExportMapsPanel } from './ExportMapsPanel';
@@ -21,7 +19,6 @@ import { NewsPanel } from './NewsPanel';
 import { MandiRatesPanel } from './MandiRatesPanel';
 import {
   FarmOverviewSkeleton,
-  AIAnalysisSkeleton,
   NDVITrendsSkeleton,
   NewsSkeleton,
   MandiRatesSkeleton,
@@ -29,7 +26,6 @@ import {
 
 type TabId =
   | 'farm'
-  | 'analysis'
   | 'trends'
   | 'weather'
   | 'news'
@@ -51,12 +47,10 @@ interface SidebarTabsProps {
   weatherCalendarData?: WeatherCalendarData | null;
   canEdit: boolean;
   onDelete: () => void;
-  onRefreshAnalysis: () => void;
   onRefreshWeather: () => void;
   onExportData?: () => void;
   onGenerateReport?: () => void;
   onDownloadMap?: () => void;
-  analysisLoading?: boolean;
   weatherLoading?: boolean;
   exportLoading?: boolean;
   onViewFarmOnMap?: () => void;
@@ -70,13 +64,6 @@ const TABS: Tab[] = [
     icon: <Home className='h-5 w-5' />,
     activeColor: 'text-primary-600',
     activeBg: 'bg-primary-50',
-  },
-  {
-    id: 'analysis',
-    label: 'AI Analysis',
-    icon: <Activity className='h-5 w-5' />,
-    activeColor: 'text-violet-600',
-    activeBg: 'bg-violet-50',
   },
   {
     id: 'trends',
@@ -122,12 +109,10 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   weatherCalendarData,
   canEdit,
   onDelete,
-  onRefreshAnalysis,
   onRefreshWeather,
   onExportData,
   onGenerateReport,
   onDownloadMap,
-  analysisLoading = false,
   weatherLoading = false,
   exportLoading = false,
   onViewFarmOnMap,
@@ -135,9 +120,55 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabId | null>('farm');
 
-  const handleOpenAnalysis = () => {
-    setActiveTab('analysis');
-  };
+  const MIN_WIDTH = 280;
+  const MAX_WIDTH = 640;
+  const STORAGE_KEY = 'sidebarTabs.panelWidth';
+  const DEFAULT_WIDTH = 310;
+
+  const clampWidth = (value: number) =>
+    Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, value));
+
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return DEFAULT_WIDTH;
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = saved ? Number.parseInt(saved, 10) : NaN;
+    return Number.isFinite(parsed) ? clampWidth(parsed) : DEFAULT_WIDTH;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const next = clampWidth(rect.right - event.clientX);
+      setPanelWidth(next);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, String(panelWidth));
+  }, [panelWidth]);
 
   const handleOpenTrends = () => {
     setActiveTab('trends');
@@ -160,7 +191,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   const isOpen = activeTab !== null;
 
   return (
-    <div className='flex h-full'>
+    <div className='flex h-full' ref={containerRef}>
       {/* Vertical Icon Strip */}
       <div className='flex flex-col items-center bg-white py-3 px-1.5 space-y-1 z-10'>
         {TABS.map(tab => {
@@ -209,14 +240,45 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
         </button>
       </div>
 
+      {/* Resize Handle */}
+      {isOpen && (
+        <div
+          role='separator'
+          aria-orientation='vertical'
+          aria-label='Resize sidebar'
+          onMouseDown={event => {
+            event.preventDefault();
+            setIsResizing(true);
+          }}
+          onDoubleClick={() => setPanelWidth(DEFAULT_WIDTH)}
+          title='Drag to resize. Double-click to reset.'
+          className={`
+            relative w-1 cursor-col-resize bg-neutral-200 hover:bg-primary-400
+            transition-colors duration-150
+            ${isResizing ? 'bg-primary-500' : ''}
+          `}
+        >
+          <span
+            className={`
+              pointer-events-none absolute inset-y-0 -left-1 -right-1
+            `}
+          />
+        </div>
+      )}
+
       {/* Sliding Panel */}
       <div
+        style={isOpen ? { width: panelWidth } : { width: 0 }}
         className={`
-          bg-white overflow-hidden transition-all duration-300 ease-in-out
-          ${isOpen ? 'w-[310px] opacity-100' : 'w-0 opacity-0'}
+          bg-white overflow-hidden ease-in-out
+          ${isResizing ? '' : 'transition-[width,opacity] duration-300'}
+          ${isOpen ? 'opacity-100' : 'opacity-0'}
         `}
       >
-        <div className='w-[310px] h-full flex flex-col overflow-hidden'>
+        <div
+          style={{ width: panelWidth }}
+          className='h-full flex flex-col overflow-hidden'
+        >
           {/* Panel Header */}
           {activeTab && (
             <div className='px-4 py-3 border-b border-neutral-200 bg-neutral-50 flex-shrink-0'>
@@ -240,28 +302,9 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                   heatmapData={heatmapData ?? null}
                   canEdit={canEdit}
                   onDelete={onDelete}
-                  onOpenAnalysis={handleOpenAnalysis}
                   onOpenTrends={handleOpenTrends}
                   onViewOnMap={handleViewOnMap}
                 />
-              ))}
-
-            {activeTab === 'analysis' &&
-              (heatmapData ? (
-                <AIAnalysisPanel
-                  heatmapData={heatmapData}
-                  onRefresh={onRefreshAnalysis}
-                  isLoading={analysisLoading}
-                />
-              ) : heatmapLoading ? (
-                <AIAnalysisSkeleton />
-              ) : (
-                <div className='flex flex-col items-center justify-center py-8 text-center'>
-                  <Activity className='h-12 w-12 text-neutral-300 mb-3' />
-                  <p className='text-sm text-neutral-600'>
-                    No analysis data available
-                  </p>
-                </div>
               ))}
 
             {activeTab === 'trends' &&

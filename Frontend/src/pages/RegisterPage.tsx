@@ -25,7 +25,7 @@ export default function RegisterPage() {
     if (error) {
       toast.error({
         message: error,
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
     }
@@ -68,7 +68,7 @@ export default function RegisterPage() {
     if (result.success) {
       toast.success({
         message: 'Registration successful! Welcome to CropLab!',
-        robotVariant: '/corn-base.png',
+        robotVariant: '/wheat-base.png',
         autoClose: 3000,
       });
       navigate('/dashboard');

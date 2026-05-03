@@ -150,7 +150,7 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
       const requestHeatmap = async (
         payload: ReturnType<typeof buildPayload>
       ): Promise<Response> => {
-        return fetch('http://127.0.0.1:8100/generate_heatmap_lite', {
+        return fetch('http://127.0.0.1:8000/generate_heatmap_lite', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

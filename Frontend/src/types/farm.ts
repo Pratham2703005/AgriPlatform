@@ -156,26 +156,18 @@ export interface HeatmapData {
     agmarknet?: AgmarknetData;
   };
   mandi_ai_analysis?: string;
-  ai_analysis?: {
-    summary: string;
-    overall_health: 'Excellent' | 'Good' | 'Moderate' | 'Poor' | 'Critical';
-    confidence: 'Low' | 'Medium' | 'High';
-    risk_score: number;
-    priority: 'Low' | 'Medium' | 'High';
-    issues: Array<{
-      id: string;
-      name: string;
-      affected_area_pct: number;
-      priority: 'Low' | 'Medium' | 'High';
-    }>;
-    why_happening: string[];
-    immediate_actions: string[];
-    monitor_next: string[];
-    risk_if_ignored: string;
-    simple_advice: {
-      en: string;
-      hi: string;
-    };
+  ndwi_pixel_counts?: {
+    valid?: number;
+    brown?: number;
+    yellow?: number;
+    light_blue?: number;
+  };
+  ndre_pixel_counts?: {
+    valid?: number;
+    purple?: number;
+    pink?: number;
+    light_green?: number;
+    dark_green?: number;
   };
 }
 

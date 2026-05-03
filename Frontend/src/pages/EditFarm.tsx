@@ -69,7 +69,7 @@ export default function EditFarm() {
     if (error) {
       toast.error({
         message: error,
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
     }
@@ -157,7 +157,7 @@ export default function EditFarm() {
     if (coordinates.length === 0) {
       toast.error({
         message: 'Please draw your farm boundary on the map',
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
       return;
@@ -174,7 +174,7 @@ export default function EditFarm() {
       });
       toast.success({
         message: 'Farm updated successfully!',
-        robotVariant: '/corn-base.png',
+        robotVariant: '/wheat-base.png',
         autoClose: 3000,
       });
       // Only navigate after the update is complete

@@ -5,12 +5,14 @@ import {
   Trash2,
   Sprout,
   ShieldAlert,
-  Sparkles,
   Calendar,
   MapPin,
   Navigation,
   Clock3,
   ChevronRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
 } from 'lucide-react';
 import type { Farm, HeatmapData } from '@/types/farm';
 import { formatArea, formatDate } from '@/utils';
@@ -20,7 +22,6 @@ interface FarmOverviewPanelProps {
   heatmapData?: HeatmapData | null;
   canEdit: boolean;
   onDelete: () => void;
-  onOpenAnalysis: () => void;
   onOpenTrends: () => void;
   onViewOnMap: () => void;
 }
@@ -33,32 +34,111 @@ const HEALTH_STYLES: Record<string, string> = {
   Critical: 'bg-red-100 text-red-800 border-red-200',
 };
 
+type HealthLabel = 'Excellent' | 'Good' | 'Moderate' | 'Poor' | 'Critical';
+type RiskLabel = 'Low' | 'Medium' | 'High';
+type PriorityLabel = 'Low' | 'Medium' | 'High';
+
+interface FieldStatus {
+  health: HealthLabel;
+  risk: RiskLabel;
+  priority: PriorityLabel;
+  riskColor: string;
+}
+
+// All three labels are derived from the same risk-score bucket so the badges
+// can never disagree with each other or with the pixel breakdown they share.
+// A higher health tier always implies a higher risk tier and a higher
+// priority tier.
+const deriveFieldStatus = (riskScore: number): FieldStatus => {
+  if (riskScore >= 60) {
+    return {
+      health: 'Critical',
+      risk: 'High',
+      priority: 'High',
+      riskColor: 'bg-red-500',
+    };
+  }
+  if (riskScore >= 40) {
+    return {
+      health: 'Poor',
+      risk: 'High',
+      priority: 'High',
+      riskColor: 'bg-red-500',
+    };
+  }
+  if (riskScore >= 25) {
+    return {
+      health: 'Moderate',
+      risk: 'Medium',
+      priority: 'Medium',
+      riskColor: 'bg-amber-500',
+    };
+  }
+  if (riskScore >= 10) {
+    return {
+      health: 'Good',
+      risk: 'Low',
+      priority: 'Low',
+      riskColor: 'bg-emerald-500',
+    };
+  }
+  return {
+    health: 'Excellent',
+    risk: 'Low',
+    priority: 'Low',
+    riskColor: 'bg-emerald-500',
+  };
+};
+
+type HealthTrend = 'improving' | 'stable' | 'declining' | null;
+
+interface HealthTrendInfo {
+  direction: HealthTrend;
+  deltaPct: number; // signed % change of the latest point vs prior baseline
+}
+
+const computeHealthTrend = (
+  ndviTrend: { date: string; mean_ndvi: number }[] | undefined
+): HealthTrendInfo => {
+  if (!ndviTrend || ndviTrend.length < 2) {
+    return { direction: null, deltaPct: 0 };
+  }
+  const sorted = ndviTrend
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const latest = sorted[sorted.length - 1]!.mean_ndvi;
+  const priorPoints = sorted.slice(0, -1);
+  const priorAvg =
+    priorPoints.reduce((sum, p) => sum + p.mean_ndvi, 0) / priorPoints.length;
+  if (!Number.isFinite(latest) || !Number.isFinite(priorAvg) || priorAvg <= 0) {
+    return { direction: null, deltaPct: 0 };
+  }
+  const deltaPct = ((latest - priorAvg) / Math.abs(priorAvg)) * 100;
+  // 3% NDVI delta is roughly the threshold where a real shift starts to
+  // show in the canopy; below that we call it stable so the arrow doesn't
+  // flicker on noise.
+  if (Math.abs(deltaPct) < 3) {
+    return { direction: 'stable', deltaPct };
+  }
+  return {
+    direction: deltaPct > 0 ? 'improving' : 'declining',
+    deltaPct,
+  };
+};
+
 export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
   farm,
   heatmapData,
   canEdit,
   onDelete,
-  onOpenAnalysis,
   onOpenTrends,
   onViewOnMap,
 }) => {
   const [descriptionExpanded, setDescriptionExpanded] = React.useState(false);
-  const [showDetails, setShowDetails] = React.useState(false);
   const DESCRIPTION_PREVIEW_CHARS = 28;
 
-  const ai = heatmapData?.ai_analysis;
   const location = heatmapData?.location;
   const pixelCounts = heatmapData?.pixel_counts;
-
-  const riskScore = Math.max(0, Math.min(100, Number(ai?.risk_score ?? 0)));
-  const riskColor =
-    riskScore <= 30
-      ? 'bg-emerald-500'
-      : riskScore <= 60
-        ? 'bg-amber-500'
-        : 'bg-red-500';
-  const riskLabel =
-    riskScore <= 30 ? 'Low' : riskScore <= 60 ? 'Medium' : 'High';
 
   const totalPixels =
     (pixelCounts?.valid && pixelCounts.valid > 0
@@ -74,19 +154,23 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
   const redPct =
     totalPixels > 0 ? ((pixelCounts?.red ?? 0) / totalPixels) * 100 : 0;
 
-  const immediateActions = (
-    ai?.immediate_actions ??
-    heatmapData?.suggestions?.immediate_actions ??
-    []
-  ).slice(0, 2);
-  const topIssue = ai?.issues?.[0];
-  const priority = ai?.priority ?? 'Medium';
+  // Single risk score derived directly from NDVI pixel distribution.
+  // Red pixels weigh most, yellow less. Health, risk, and priority all
+  // come out of the same bucket so they cannot disagree.
+  const riskScore = Math.max(0, Math.min(100, redPct * 0.7 + yellowPct * 0.3));
+  const status = deriveFieldStatus(riskScore);
+  const overallHealth = status.health;
+  const priority = status.priority;
+  const riskLabel = status.risk;
+  const riskColor = status.riskColor;
   const priorityDotClass =
     priority === 'High'
       ? 'bg-red-500'
       : priority === 'Low'
         ? 'bg-emerald-500'
         : 'bg-amber-500';
+
+  const healthTrend = computeHealthTrend(heatmapData?.anomaly?.ndvi_trend);
 
   const descriptionPreview = farm.description
     ? farm.description.length > DESCRIPTION_PREVIEW_CHARS
@@ -126,12 +210,6 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
 
   const boundaryPoints =
     farm.coordinates?.filter(point => point.length >= 2).length ?? 0;
-  const summaryText =
-    ai?.summary?.trim() ||
-    heatmapData?.suggestions?.overall_assessment?.trim() ||
-    '';
-  const truncatedSummary =
-    summaryText.length > 150 ? `${summaryText.slice(0, 150)}...` : summaryText;
 
   return (
     <div className='space-y-3'>
@@ -205,17 +283,10 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
                 <span className='text-emerald-100'>Overall health</span>
                 <span
                   className={`inline-flex items-center whitespace-nowrap rounded-full border bg-white/90 px-2 py-0.5 text-[10px] font-semibold ${
-                    HEALTH_STYLES[ai?.overall_health ?? 'Moderate'] ??
-                    HEALTH_STYLES.Moderate
+                    HEALTH_STYLES[overallHealth] ?? HEALTH_STYLES.Moderate
                   }`}
                 >
-                  {ai?.overall_health ?? 'Moderate'}
-                </span>
-              </div>
-              <div className='flex items-center justify-between gap-2'>
-                <span className='text-emerald-100'>Confidence</span>
-                <span className='font-semibold text-white'>
-                  {ai?.confidence ?? 'N/A'}
+                  {overallHealth}
                 </span>
               </div>
               <div className='flex items-center justify-between gap-2'>
@@ -298,52 +369,6 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
             title='Open NDVI Trends'
           >
             View NDVI Trends
-            <ChevronRight className='ml-1 h-3.5 w-3.5' />
-          </button>
-        </div>
-      </div>
-
-      <div className='rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200'>
-        <div className='mb-2 flex items-center gap-1.5'>
-          <Sparkles className='h-4 w-4 text-violet-600' />
-          <h3 className='text-sm font-semibold text-neutral-900'>
-            AI Snapshot
-          </h3>
-        </div>
-        {truncatedSummary ? (
-          <p className='text-sm leading-5 text-neutral-700'>
-            {truncatedSummary}
-          </p>
-        ) : (
-          <p className='text-sm text-neutral-500'>
-            AI summary unavailable for this farm.
-          </p>
-        )}
-        <div className='mt-2.5 space-y-1.5 text-[11px]'>
-          {topIssue && (
-            <p className='text-neutral-700'>
-              <span className='text-neutral-500'>Top issue: </span>
-              <span className='font-semibold text-amber-800'>
-                {topIssue.name} ({Math.round(topIssue.affected_area_pct)}%)
-              </span>
-            </p>
-          )}
-          {immediateActions.length > 0 && (
-            <p className='text-neutral-700'>
-              <span className='text-neutral-500'>Next action: </span>
-              <span className='font-semibold text-emerald-700'>
-                {immediateActions[0]}
-              </span>
-            </p>
-          )}
-        </div>
-        <div className='mt-2.5 flex items-center gap-4'>
-          <button
-            type='button'
-            onClick={onOpenAnalysis}
-            className='inline-flex items-center text-[11px] font-semibold text-sky-700 hover:text-sky-900'
-          >
-            View full analysis
             <ChevronRight className='ml-1 h-3.5 w-3.5' />
           </button>
         </div>
