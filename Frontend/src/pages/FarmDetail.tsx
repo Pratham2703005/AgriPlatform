@@ -355,19 +355,11 @@ export default function FarmDetail() {
 
       {/* Right Sidebar */}
       <div className='flex h-full overflow-hidden'>
-        {heatmapLoading ? (
-          <div className='w-[350px] bg-white border-l border-neutral-200 flex flex-col items-center justify-center p-4 space-y-4'>
-            <div className='relative'>
-              <div className='animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-primary-600'></div>
-            </div>
-            <p className='text-sm text-neutral-600 text-center'>
-              Analyzing field data...
-            </p>
-          </div>
-        ) : farm ? (
+        {farm ? (
           <SidebarTabs
             farm={farm}
             heatmapData={heatmapData ?? null}
+            heatmapLoading={heatmapLoading}
             weatherCalendarData={calendarData}
             canEdit={canEdit}
             onDelete={handleDelete}

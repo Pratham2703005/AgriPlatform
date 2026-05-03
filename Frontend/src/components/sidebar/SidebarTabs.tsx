@@ -19,6 +19,13 @@ import { FarmWeatherCalendar } from '../FarmWeatherCalendar';
 import { ExportMapsPanel } from './ExportMapsPanel';
 import { NewsPanel } from './NewsPanel';
 import { MandiRatesPanel } from './MandiRatesPanel';
+import {
+  FarmOverviewSkeleton,
+  AIAnalysisSkeleton,
+  NDVITrendsSkeleton,
+  NewsSkeleton,
+  MandiRatesSkeleton,
+} from './PanelSkeletons';
 
 type TabId =
   | 'farm'
@@ -40,6 +47,7 @@ interface Tab {
 interface SidebarTabsProps {
   farm: Farm;
   heatmapData?: HeatmapData | null;
+  heatmapLoading?: boolean;
   weatherCalendarData?: WeatherCalendarData | null;
   canEdit: boolean;
   onDelete: () => void;
@@ -110,6 +118,7 @@ const TABS: Tab[] = [
 export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   farm,
   heatmapData,
+  heatmapLoading = false,
   weatherCalendarData,
   canEdit,
   onDelete,
@@ -222,50 +231,55 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
           {/* Panel Content */}
           <div className='flex-1 overflow-y-auto p-3'>
-            {activeTab === 'farm' && (
-              <FarmOverviewPanel
-                farm={farm}
-                heatmapData={heatmapData ?? null}
-                canEdit={canEdit}
-                onDelete={onDelete}
-                onOpenAnalysis={handleOpenAnalysis}
-                onOpenTrends={handleOpenTrends}
-                onViewOnMap={handleViewOnMap}
-              />
-            )}
+            {activeTab === 'farm' &&
+              (heatmapLoading && !heatmapData ? (
+                <FarmOverviewSkeleton />
+              ) : (
+                <FarmOverviewPanel
+                  farm={farm}
+                  heatmapData={heatmapData ?? null}
+                  canEdit={canEdit}
+                  onDelete={onDelete}
+                  onOpenAnalysis={handleOpenAnalysis}
+                  onOpenTrends={handleOpenTrends}
+                  onViewOnMap={handleViewOnMap}
+                />
+              ))}
 
-            {activeTab === 'analysis' && heatmapData && (
-              <AIAnalysisPanel
-                heatmapData={heatmapData}
-                onRefresh={onRefreshAnalysis}
-                isLoading={analysisLoading}
-              />
-            )}
+            {activeTab === 'analysis' &&
+              (heatmapData ? (
+                <AIAnalysisPanel
+                  heatmapData={heatmapData}
+                  onRefresh={onRefreshAnalysis}
+                  isLoading={analysisLoading}
+                />
+              ) : heatmapLoading ? (
+                <AIAnalysisSkeleton />
+              ) : (
+                <div className='flex flex-col items-center justify-center py-8 text-center'>
+                  <Activity className='h-12 w-12 text-neutral-300 mb-3' />
+                  <p className='text-sm text-neutral-600'>
+                    No analysis data available
+                  </p>
+                </div>
+              ))}
 
-            {activeTab === 'analysis' && !heatmapData && (
-              <div className='flex flex-col items-center justify-center py-8 text-center'>
-                <Activity className='h-12 w-12 text-neutral-300 mb-3' />
-                <p className='text-sm text-neutral-600'>
-                  Loading analysis data...
-                </p>
-              </div>
-            )}
-
-            {activeTab === 'trends' && heatmapData && (
-              <NDVITrendsPanel
-                heatmapData={heatmapData}
-                onViewStressMap={handleViewStressMap}
-              />
-            )}
-
-            {activeTab === 'trends' && !heatmapData && (
-              <div className='flex flex-col items-center justify-center py-8 text-center'>
-                <TrendingUp className='h-12 w-12 text-neutral-300 mb-3' />
-                <p className='text-sm text-neutral-600'>
-                  Loading trend data...
-                </p>
-              </div>
-            )}
+            {activeTab === 'trends' &&
+              (heatmapData ? (
+                <NDVITrendsPanel
+                  heatmapData={heatmapData}
+                  onViewStressMap={handleViewStressMap}
+                />
+              ) : heatmapLoading ? (
+                <NDVITrendsSkeleton />
+              ) : (
+                <div className='flex flex-col items-center justify-center py-8 text-center'>
+                  <TrendingUp className='h-12 w-12 text-neutral-300 mb-3' />
+                  <p className='text-sm text-neutral-600'>
+                    No trend data available
+                  </p>
+                </div>
+              ))}
 
             {activeTab === 'weather' && weatherCalendarData && (
               <FarmWeatherCalendar
@@ -286,20 +300,36 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
               </div>
             )}
 
-            {activeTab === 'news' && (
-              <NewsPanel
-                news={heatmapData?.news ?? []}
-                aiAnalysis={heatmapData?.news_ai_analysis}
-              />
-            )}
+            {activeTab === 'news' &&
+              (heatmapData ? (
+                <NewsPanel
+                  news={heatmapData?.news ?? []}
+                  {...(heatmapData?.news_ai_analysis !== undefined && {
+                    aiAnalysis: heatmapData.news_ai_analysis,
+                  })}
+                />
+              ) : heatmapLoading ? (
+                <NewsSkeleton />
+              ) : (
+                <NewsPanel news={[]} />
+              ))}
 
-            {activeTab === 'mandi' && (
-              <MandiRatesPanel
-                govdata={heatmapData?.rate?.govdata ?? []}
-                agmarknet={heatmapData?.rate?.agmarknet}
-                aiAnalysis={heatmapData?.mandi_ai_analysis}
-              />
-            )}
+            {activeTab === 'mandi' &&
+              (heatmapData ? (
+                <MandiRatesPanel
+                  govdata={heatmapData?.rate?.govdata ?? []}
+                  {...(heatmapData?.rate?.agmarknet !== undefined && {
+                    agmarknet: heatmapData.rate.agmarknet,
+                  })}
+                  {...(heatmapData?.mandi_ai_analysis !== undefined && {
+                    aiAnalysis: heatmapData.mandi_ai_analysis,
+                  })}
+                />
+              ) : heatmapLoading ? (
+                <MandiRatesSkeleton />
+              ) : (
+                <MandiRatesPanel govdata={[]} />
+              ))}
 
             {activeTab === 'export' && (
               <ExportMapsPanel
