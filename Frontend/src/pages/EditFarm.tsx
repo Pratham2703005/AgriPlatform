@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import type { FarmFormData } from '../types/farm';
-import { CROP_OPTIONS } from '../types/farm';
+import { CROP_OPTIONS, calculateCropDates } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
 import { ArrowLeft, Sprout, MapPin, Calendar, Save, X } from 'lucide-react';
 import { formatHectares } from '@/utils';
@@ -33,6 +33,7 @@ export default function EditFarm() {
   } = useForm<FarmFormData>();
 
   const plantingDate = watch('plantingDate');
+  const selectedCrop = watch('crop');
 
   // Check permissions
   const isGuestFarm =
@@ -64,6 +65,16 @@ export default function EditFarm() {
       setArea(farm?.area);
     }
   }, [farm, setValue]);
+
+  // Auto-fill planting and harvest dates when crop is changed
+  useEffect(() => {
+    if (selectedCrop && !farm) {
+      // Only auto-fill if crop changed manually, not on initial load
+      const { plantingDate: autoPlantingDate, harvestDate: autoHarvestDate } = calculateCropDates(selectedCrop);
+      setValue('plantingDate' as keyof FarmFormData, autoPlantingDate);
+      setValue('harvestDate' as keyof FarmFormData, autoHarvestDate);
+    }
+  }, [selectedCrop, farm, setValue]);
 
   // Show error toast when error state changes
   useEffect(() => {
@@ -408,6 +419,7 @@ export default function EditFarm() {
                   onPolygonComplete={handlePolygonComplete}
                   height='500px'
                   className='border rounded-lg'
+                  {...(coordinates.length > 0 && { initialPolygon: coordinates })}
                 />
 
                 {coordinates.length > 0 && (

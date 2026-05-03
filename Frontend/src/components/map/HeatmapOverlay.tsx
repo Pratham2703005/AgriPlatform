@@ -43,6 +43,7 @@ interface HeatmapOverlayProps {
   activeLayer?: LayerType;
   onLayerChange?: (layer: LayerType) => void;
   maskOpacity?: Record<string, number>; // Individual mask opacity: { red: 0.7, yellow: 0.6, ... }
+  maskVisibility?: Record<string, boolean>; // Individual mask visibility: { red: true, yellow: false, ... }
   anomalyTileUrl?: string | undefined; // Tile URL for anomaly map
   focusRequestId?: number;
   viewMode?: LayerViewMode; // 'masks' shows discrete colors, 'range' shows gradient
@@ -237,7 +238,8 @@ const HeatmapImageOverlays: React.FC<{
   coordinates: number[][];
   masks: MaskOverlay[];
   maskOpacity?: Record<string, number>;
-}> = ({ coordinates, masks, maskOpacity = {} }) => {
+  maskVisibility?: Record<string, boolean>;
+}> = ({ coordinates, masks, maskOpacity = {}, maskVisibility = {} }) => {
   // Calculate bounds from coordinates
   const getBounds = (): L.LatLngBounds | null => {
     if (coordinates.length === 0) return null;
@@ -268,8 +270,9 @@ const HeatmapImageOverlays: React.FC<{
     <>
       {masks.map(mask => {
         const opacity = maskOpacity[mask.id] ?? mask.opacity;
+        const isVisible = maskVisibility[mask.id] ?? mask.visible ?? true;
         return (
-          mask.visible &&
+          isVisible &&
           mask.base64Data && (
             <ImageOverlay
               key={mask.id}
@@ -291,6 +294,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   className = '',
   activeLayer: activeLayerProp,
   maskOpacity = {},
+  maskVisibility = {},
   anomalyTileUrl,
   focusRequestId,
   viewMode = 'masks',
@@ -548,6 +552,7 @@ export const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
               coordinates={coordinates}
               masks={activeMasks}
               maskOpacity={maskOpacity}
+              maskVisibility={maskVisibility}
             />
           )}
 

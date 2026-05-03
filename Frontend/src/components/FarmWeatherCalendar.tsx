@@ -345,14 +345,13 @@ const RainTooltip = ({
   return null;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WeatherIntelligenceTooltip = ({
   active,
   payload,
   label,
 }: {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ dataKey: string; value: number }>;
   label?: string;
 }) => {
   if (!active || !payload?.length) return null;

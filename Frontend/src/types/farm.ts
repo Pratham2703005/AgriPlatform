@@ -95,14 +95,10 @@ export interface FarmStore extends FarmState {
 }
 
 export interface HeatmapData {
-  predicted_yield: number;
-  old_yield: number;
-  growth: {
-    ratio: number;
-    percentage: number;
-  };
+  date_used?: string; // YYYY-MM-DD - reference date the satellite imagery was sampled at
   location: {
     district: string;
+    state?: string | null;
     coordinates: {
       latitude: number;
       longitude: number;
@@ -154,13 +150,6 @@ export interface HeatmapData {
   };
   suggestions: {
     overall_assessment: string;
-    yield_analysis: {
-      predicted_yield: number;
-      previous_yield: number;
-      yield_change: number;
-      yield_change_percent: number;
-      status: string;
-    };
     field_management: string[];
     soil_recommendations: string[];
     immediate_actions: string[];
@@ -243,3 +232,122 @@ export const CROP_OPTIONS = [
 ] as const;
 
 export type CropType = (typeof CROP_OPTIONS)[number];
+
+// Crop calendar with cultivation and harvest months
+export const CROP_CALENDAR: Record<string, { cultivation: string[]; harvest: string[] }> = {
+  Wheat: {
+    cultivation: ['Oct', 'Nov', 'Dec'],
+    harvest: ['Mar', 'Apr'],
+  },
+  Rice: {
+    cultivation: ['Jun', 'Jul'],
+    harvest: ['Oct', 'Nov'],
+  },
+  Corn: {
+    cultivation: ['Jun', 'Jul'],
+    harvest: ['Sep', 'Oct'],
+  },
+  Soybeans: {
+    cultivation: ['Jun', 'Jul'],
+    harvest: ['Oct', 'Nov'],
+  },
+  Cotton: {
+    cultivation: ['Apr', 'May', 'Jun'],
+    harvest: ['Nov', 'Dec', 'Jan'],
+  },
+  Sugarcane: {
+    cultivation: ['Feb', 'Mar', 'Oct', 'Nov'],
+    harvest: ['Nov', 'Dec', 'Jan', 'Feb'],
+  },
+  Potato: {
+    cultivation: ['Oct', 'Nov'],
+    harvest: ['Jan', 'Feb'],
+  },
+  Tomato: {
+    cultivation: ['Jun', 'Jul', 'Nov', 'Dec'],
+    harvest: ['Sep', 'Oct', 'Feb', 'Mar'],
+  },
+  Onion: {
+    cultivation: ['Oct', 'Nov'],
+    harvest: ['Feb', 'Mar'],
+  },
+  Cabbage: {
+    cultivation: ['Sep', 'Oct'],
+    harvest: ['Jan', 'Feb'],
+  },
+  Carrot: {
+    cultivation: ['Oct', 'Nov'],
+    harvest: ['Jan', 'Feb'],
+  },
+  Beans: {
+    cultivation: ['Jun', 'Jul'],
+    harvest: ['Sep', 'Oct'],
+  },
+  Peas: {
+    cultivation: ['Oct', 'Nov'],
+    harvest: ['Jan', 'Feb'],
+  },
+  Sunflower: {
+    cultivation: ['Jan', 'Feb', 'Jun', 'Jul'],
+    harvest: ['Apr', 'May', 'Sep', 'Oct'],
+  },
+  Barley: {
+    cultivation: ['Oct', 'Nov'],
+    harvest: ['Mar', 'Apr'],
+  },
+  Oats: {
+    cultivation: ['Oct', 'Nov'],
+    harvest: ['Mar', 'Apr'],
+  },
+};
+
+// Helper function to convert month name to number (1-12)
+const monthNameToNumber = (monthName: string): number => {
+  const months: Record<string, number> = {
+    Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
+    Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12,
+  };
+  return months[monthName] || 1;
+};
+
+// Calculate planting and harvest dates based on crop and current date
+export const calculateCropDates = (
+  cropName: string,
+  referenceDate: Date = new Date()
+): { plantingDate: string; harvestDate: string } => {
+  const calendar = CROP_CALENDAR[cropName];
+  if (!calendar) {
+    return { plantingDate: '', harvestDate: '' };
+  }
+
+  const currentMonth = referenceDate.getMonth() + 1; // 1-12
+  const currentYear = referenceDate.getFullYear();
+
+  // Convert cultivation and harvest months to numbers
+  const cultivationMonths = calendar.cultivation.map(monthNameToNumber);
+  const harvestMonths = calendar.harvest.map(monthNameToNumber);
+
+  // Find the cultivation month - prioritize past cultivations
+  let plantingYear = currentYear;
+  const plantingMonth = cultivationMonths[0]!;
+
+  // If earliest cultivation month hasn't occurred yet this year, look back to last year
+  if (plantingMonth > currentMonth) {
+    plantingYear = currentYear - 1;
+  }
+
+  // Find harvest month - use the first one after the cultivation period ends
+  const maxCultivationMonth = Math.max(...cultivationMonths);
+  let harvestYear = plantingYear;
+  const harvestMonth = harvestMonths[0]!;
+
+  // If harvest month is in an earlier month than max cultivation, it's in the next year
+  if (harvestMonth <= maxCultivationMonth) {
+    harvestYear = plantingYear + 1;
+  }
+
+  const plantingDateString = `${plantingYear}-${String(plantingMonth).padStart(2, '0')}-01`;
+  const harvestDateString = `${harvestYear}-${String(harvestMonth).padStart(2, '0')}-01`;
+
+  return { plantingDate: plantingDateString, harvestDate: harvestDateString };
+};

@@ -17,9 +17,7 @@ const normalizeHeatmapData = (raw: unknown): HeatmapData => {
 
   const source =
     nestedData &&
-    ('predicted_yield' in nestedData ||
-      'masks' in nestedData ||
-      'pixel_counts' in nestedData)
+    ('masks' in nestedData || 'pixel_counts' in nestedData)
       ? (nestedData as unknown as LegacyHeatmapData)
       : (topLevel as unknown as LegacyHeatmapData);
 
@@ -160,8 +158,8 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
       };
 
       try {
-        let safeCultivationDate = toDateOnly(cultivation_date);
-        let safeHarvestDate = toDateOnly(harvest_date);
+        const safeCultivationDate = toDateOnly(cultivation_date);
+        const safeHarvestDate = toDateOnly(harvest_date);
 
         let response = await requestHeatmap(
           buildPayload(

@@ -21,6 +21,8 @@ interface LeafletMapProps {
   onPolygonComplete?: (coordinates: number[][], area: number) => void;
   height?: string;
   className?: string;
+  initialPolygon?: number[][];
+  allowPolygon?: boolean;
 }
 
 // Calculate area in hectares from [lng, lat] coordinates using the Shoelace formula
@@ -165,6 +167,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   onPolygonComplete,
   height = '400px',
   className = '',
+  initialPolygon,
+  allowPolygon = true,
 }) => {
   const [mapStyle, setMapStyle] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [showStyleSelector, setShowStyleSelector] = useState(false);
@@ -176,7 +180,13 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const [rectEnd, setRectEnd] = useState<[number, number] | null>(null);
   const [rectBounds, setRectBounds] = useState<[[number, number], [number, number]] | null>(null);
   const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
-  const [completedPolygon, setCompletedPolygon] = useState<[number, number][] | null>(null);
+  const [completedPolygon, setCompletedPolygon] = useState<[number, number][] | null>(() => {
+    if (initialPolygon && initialPolygon.length >= 3) {
+      // Convert from [lng, lat] to [lat, lng] for Leaflet
+      return initialPolygon.map(([lng, lat]) => [lat, lng] as [number, number]);
+    }
+    return null;
+  });
 
   // Result state
   const [shapeInfo, setShapeInfo] = useState<{ label: string; area: number } | null>(null);
@@ -195,6 +205,32 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     setCompletedPolygon(null);
     setShapeInfo(null);
   };
+
+  // Initialize map view to fit initial polygon bounds
+  React.useEffect(() => {
+    if (initialPolygon && initialPolygon.length > 0 && mapRef.current) {
+      // Calculate bounds from polygon coordinates
+      const lats = initialPolygon.map(c => c[1]).filter((val): val is number => typeof val === 'number');
+      const lngs = initialPolygon.map(c => c[0]).filter((val): val is number => typeof val === 'number');
+      
+      if (lats.length === 0 || lngs.length === 0) return;
+      
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      
+      const bounds: L.LatLngBoundsExpression = [
+        [minLat, minLng],
+        [maxLat, maxLng],
+      ];
+      
+      // Fit bounds with some padding
+      setTimeout(() => {
+        mapRef.current?.fitBounds(bounds, { padding: [50, 50] });
+      }, 100);
+    }
+  }, [initialPolygon]);
 
   const activateMode = (mode: DrawMode) => {
     clearShapes();
@@ -398,16 +434,18 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           </button>
 
           {/* Polygon */}
-          <button
-            type="button"
-            onClick={() => activateMode('polygon')}
-            className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
-              drawMode === 'polygon' ? 'bg-emerald-100 text-emerald-600' : 'bg-white text-black hover:bg-gray-100'
-            }`}
-            title="Draw Polygon"
-          >
-            <Pentagon className="h-4 w-4 group-hover:scale-110 transition-transform" />
-          </button>
+          {allowPolygon && (
+            <button
+              type="button"
+              onClick={() => activateMode('polygon')}
+              className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all duration-200 group ${
+                drawMode === 'polygon' ? 'bg-emerald-100 text-emerald-600' : 'bg-white text-black hover:bg-gray-100'
+              }`}
+              title="Draw Polygon"
+            >
+              <Pentagon className="h-4 w-4 group-hover:scale-110 transition-transform" />
+            </button>
+          )}
 
           <div className="border-t border-neutral-200 my-1" />
 

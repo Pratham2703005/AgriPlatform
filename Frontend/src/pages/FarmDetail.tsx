@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import { useHeatmap } from '../hooks/useHeatmap';
@@ -11,6 +11,12 @@ import type { LayerType } from '../components/map/HeatmapOverlay';
 import { ArrowLeft, Sprout, Lock } from 'lucide-react';
 import type { Farm } from '@/types/farm';
 import { toast } from 'robot-toast';
+import {
+  exportFarmDataAsCSV,
+  generatePDFReport,
+  createMapImagesZip,
+  extractMapImagesFromHeatmapData,
+} from '../services/exportService';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +40,8 @@ export default function FarmDetail() {
     React.useState(false);
   const [activeLayer, setActiveLayer] = useState<LayerType>('ndvi');
   const [mapFocusRequestId, setMapFocusRequestId] = useState(0);
+  const [exportLoading, setExportLoading] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const [maskOpacity, setMaskOpacity] = useState<Record<string, number>>({
     red: 0.7,
     yellow: 0.7,
@@ -45,6 +53,17 @@ export default function FarmDetail() {
     light_green: 0.7,
     dark_green: 0.7,
     anomaly: 0.7,
+  });
+  const [maskVisibility, setMaskVisibility] = useState<Record<string, boolean>>({
+    red: true,
+    yellow: true,
+    green: true,
+    brown: true,
+    light_blue: true,
+    purple: true,
+    pink: true,
+    light_green: true,
+    dark_green: true,
   });
   const [viewMode, setViewMode] = useState<'masks' | 'range'>('masks');
   const [rangeOpacity, setRangeOpacity] = useState(0.7);
@@ -232,6 +251,13 @@ export default function FarmDetail() {
     }));
   };
 
+  const handleVisibilityChange = (maskId: string, visible: boolean) => {
+    setMaskVisibility(prev => ({
+      ...prev,
+      [maskId]: visible,
+    }));
+  };
+
   const anomalyTileUrl = heatmapData?.anomaly?.tile_urls?.anomaly_heatmap;
 
   // Pick the gradient meta for whichever layer is active. Anomaly has its
@@ -257,7 +283,7 @@ export default function FarmDetail() {
       </Link>
 
       {/* Full-Window Map */}
-      <div className='flex-1 relative'>
+      <div className='flex-1 relative' ref={mapContainerRef}>
         <HeatmapOverlay
           coordinates={farm?.coordinates || [[]]}
           heatmapData={heatmapData}
@@ -266,6 +292,7 @@ export default function FarmDetail() {
           activeLayer={activeLayer}
           onLayerChange={setActiveLayer}
           maskOpacity={maskOpacity}
+          maskVisibility={maskVisibility}
           anomalyTileUrl={anomalyTileUrl}
           focusRequestId={mapFocusRequestId}
           viewMode={viewMode}
@@ -279,6 +306,8 @@ export default function FarmDetail() {
             onLayerChange={setActiveLayer}
             maskOpacity={maskOpacity}
             onOpacityChange={handleOpacityChange}
+            maskVisibility={maskVisibility}
+            onVisibilityChange={handleVisibilityChange}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             rangeOpacity={rangeOpacity}
@@ -325,17 +354,61 @@ export default function FarmDetail() {
                 }
               }
             }}
-            onExportData={() => {
-              console.log('Export farm data');
+            onExportData={async () => {
+              try {
+                setExportLoading(true);
+                exportFarmDataAsCSV(farm, heatmapData);
+                toast.success('Farm data exported successfully');
+              } catch (error) {
+                console.error('Export failed:', error);
+                toast.error('Failed to export farm data');
+              } finally {
+                setExportLoading(false);
+              }
             }}
-            onGenerateReport={() => {
-              console.log('Generate report');
+            onGenerateReport={async () => {
+              try {
+                setExportLoading(true);
+                await generatePDFReport(farm, heatmapData);
+                toast.success('Report generated successfully');
+              } catch (error) {
+                console.error('Report generation failed:', error);
+                toast.error('Failed to generate report');
+              } finally {
+                setExportLoading(false);
+              }
             }}
-            onDownloadMap={() => {
-              console.log('Download map');
+            onDownloadMap={async () => {
+              try {
+                setExportLoading(true);
+                if (!farm) {
+                  toast.error('Farm not ready');
+                  return;
+                }
+                if (!heatmapData) {
+                  toast.error('Heatmap data not loaded yet');
+                  return;
+                }
+                // Pull every mask/range/anomaly PNG straight from the
+                // backend response. No leaflet manipulation, no on-screen
+                // layer flipping - the user keeps whichever view they
+                // were on while the zip is built.
+                const mapImages = extractMapImagesFromHeatmapData(heatmapData);
+                if (mapImages.length === 0) {
+                  toast.error('No map images available to download');
+                  return;
+                }
+                await createMapImagesZip(mapImages, farm.name);
+                toast.success(`Downloaded ${mapImages.length} map images`);
+              } catch (error) {
+                console.error('Map download failed:', error);
+                toast.error('Failed to download map images');
+              } finally {
+                setExportLoading(false);
+              }
             }}
             weatherLoading={calendarLoading}
-            exportLoading={false}
+            exportLoading={exportLoading}
           />
         ) : null}
       </div>

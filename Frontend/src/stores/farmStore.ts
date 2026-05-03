@@ -177,8 +177,14 @@ export const useFarmStore = create<FarmState>((set, get) => ({
 
       if (response.code === 1) {
         console.log('✅ farmStore: Farm created successfully via API');
-        // Add the new farm directly to the state instead of refetching
-        const newFarm = FarmAPI.transformFromApiFormat(response.result as Farm);
+        // Backend's create controller returns { farm, ... } - unwrap to the
+        // Farm doc before transforming.
+        const raw = response.result as unknown;
+        const farmPayload =
+          raw && typeof raw === 'object' && 'farm' in raw
+            ? ((raw as { farm: Farm }).farm as Farm)
+            : (raw as Farm);
+        const newFarm = FarmAPI.transformFromApiFormat(farmPayload);
         const currentFarms = get().farms;
 
         console.log(
@@ -235,9 +241,16 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       set({ loading: true, error: null });
       const response = await FarmAPI.updateFarm(id, farmData);
       if (response.code === 1) {
-        const updatedFarm = FarmAPI.transformFromApiFormat(
-          response.result as Farm
-        );
+        // The update controller wraps the doc as { farm, geospatialAnalysis }
+        // while other endpoints return the doc directly. Tolerate both so a
+        // wrapper response doesn't get treated as the Farm itself, which
+        // would silently zero out coordinates and area.
+        const raw = response.result as unknown;
+        const farmPayload =
+          raw && typeof raw === 'object' && 'farm' in raw
+            ? ((raw as { farm: Farm }).farm as Farm)
+            : (raw as Farm);
+        const updatedFarm = FarmAPI.transformFromApiFormat(farmPayload);
         set({
           farms: get().farms.map((farm: Farm) =>
             farm.id === id ? updatedFarm : farm

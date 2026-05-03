@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, FileText, Map, Share2 } from 'lucide-react';
+import { Download, FileText, Map } from 'lucide-react';
 
 interface ExportMapsPanelProps {
   farmName: string;
@@ -113,27 +113,6 @@ export const ExportMapsPanel: React.FC<ExportMapsPanelProps> = ({
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Sharing Section */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-3 border border-indigo-200">
-        <h4 className="text-sm font-semibold text-indigo-900 mb-2 flex items-center">
-          <Share2 className="h-4 w-4 mr-2" />
-          Share Analysis
-        </h4>
-        <p className="text-xs text-indigo-800 mb-3">
-          Share farm analysis with colleagues or stakeholders
-        </p>
-        <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors">
-          Share This Farm
-        </button>
-      </div>
-
-      {/* Info Note */}
-      <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-        <p className="text-xs text-yellow-800">
-          📊 All exports include farm metadata, coordinates, and sensor data for comprehensive analysis.
-        </p>
       </div>
     </div>
   );

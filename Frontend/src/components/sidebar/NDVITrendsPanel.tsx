@@ -69,13 +69,12 @@ const formatLongDate = (date: Date): string =>
     year: 'numeric',
   });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const NdviTooltip = ({
   active,
   payload,
 }: {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ payload: { date: Date; timestamp: number; ndvi: number; label: string; longLabel: string; axisLabel: string } }>;
 }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
@@ -120,27 +119,21 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
     axisLabel: formatYearLabel(point.date),
   }));
 
-  const yearsSpanned = chartData.length > 1 ? chartData.length - 1 : 0;
-
-  const firstNdvi = chartData[0]?.ndvi;
+  // Compare latest NDVI against average of all prior years
   const lastNdvi = chartData[chartData.length - 1]?.ndvi;
-  const change =
-    typeof firstNdvi === 'number' && typeof lastNdvi === 'number'
-      ? lastNdvi - firstNdvi
+  const priorPoints = chartData.slice(0, -1);
+  const priorAvg =
+    priorPoints.length > 0
+      ? priorPoints.reduce((sum, p) => sum + (typeof p.ndvi === 'number' ? p.ndvi : 0), 0) / priorPoints.length
       : 0;
   const changePct =
-    typeof firstNdvi === 'number' && Math.abs(firstNdvi) > 0.0001
-      ? (change / Math.abs(firstNdvi)) * 100
+    typeof lastNdvi === 'number' && priorAvg > 0
+      ? ((lastNdvi - priorAvg) / Math.abs(priorAvg)) * 100
       : 0;
-
-  const slope = chartData.length > 1 ? change / (chartData.length - 1) : 0;
+  const yearsSpanned = priorPoints.length;
 
   const trendKey: 'improving' | 'stable' | 'declining' =
-    Math.abs(changePct) < 3 || Math.abs(slope) < 0.01
-      ? 'stable'
-      : changePct > 0
-        ? 'improving'
-        : 'declining';
+    Math.abs(changePct) < 3 ? 'stable' : changePct > 0 ? 'improving' : 'declining';
 
   const trendLabel =
     trendKey === 'improving'
@@ -270,72 +263,46 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
 
   const impactText =
     trendKey === 'declining' && stressedPercent >= 40
-      ? 'This pattern may reduce yield by about 15-20% if not corrected soon.'
+      ? 'Stress is widespread; targeted scouting and irrigation review can stop further spread.'
       : trendKey === 'declining'
-        ? 'If this decline continues, yield can drop by around 8-12%.'
+        ? 'Decline detected; check water distribution and nutrient uptake in weaker zones.'
         : trendKey === 'improving'
-          ? 'Recovery is underway; stable irrigation can preserve this momentum.'
+          ? 'Recovery underway; stable irrigation can preserve this momentum.'
           : 'Stable health now; targeted scouting can prevent sudden stress spread.';
 
   // Same-month NDVI compared across the earliest and latest year in the
   // 5-year window. No fabricated baseline - this is just first vs last.
   const comparisonText =
-    earliestYear === null ||
-    latestYear === null ||
-    earliestYear === latestYear ||
-    chartData.length < 2
-      ? 'Need NDVI from at least two years to compare year-over-year.'
-      : changePct >= 0
-        ? `NDVI is up ${changePct.toFixed(1)}% in ${latestYear} vs ${earliestYear} for the same calendar window.`
-        : `NDVI is down ${Math.abs(changePct).toFixed(1)}% in ${latestYear} vs ${earliestYear} for the same calendar window.`;
+    yearsSpanned === 0 || !chartData[0]?.date || !chartData[chartData.length - 1]?.date
+      ? 'Need NDVI from at least two years to compare.'
+      : `Latest vs average of ${yearsSpanned} prior year${yearsSpanned === 1 ? '' : 's'}.`;
 
-  const latestForForecast =
-    typeof latestNdviValue === 'number' ? latestNdviValue : 0.5;
-  const forecast = {
-    optimistic: Math.min(1, latestForForecast + 0.05),
-    expected: Math.min(
-      1,
-      Math.max(
-        0,
-        latestForForecast +
-          (trendKey === 'improving'
-            ? 0.03
-            : trendKey === 'declining'
-              ? -0.02
-              : 0.005)
-      )
-    ),
-    pessimistic: Math.max(0, latestForForecast - 0.05),
-  };
-
-  // Risk derived directly from NDVI pixel distribution.
-  const riskScore = Math.max(
-    0,
-    Math.min(100, stressedPercent * 0.7 + moderatePercent * 0.3)
-  );
+  // Calculate risk score from pixel distribution, then derive crop health score
+  const riskScore = Math.max(0, Math.min(100, stressedPercent * 0.7 + moderatePercent * 0.3));
+  const cropHealthScore = 100 - riskScore;
 
   const derivedHealth =
-    riskScore > 50
-      ? 'Critical'
-      : riskScore > 35
-        ? 'Poor'
-        : riskScore > 20
+    cropHealthScore > 70
+      ? 'Excellent'
+      : cropHealthScore > 50
+        ? 'Good'
+        : cropHealthScore > 30
           ? 'Moderate'
-          : riskScore > 10
-            ? 'Good'
-            : 'Excellent';
+          : cropHealthScore > 10
+            ? 'Poor'
+            : 'Critical';
   const derivedPriority: 'High' | 'Medium' | 'Low' =
-    riskScore >= 35 ? 'High' : riskScore >= 15 ? 'Medium' : 'Low';
+    cropHealthScore <= 35 ? 'High' : cropHealthScore <= 65 ? 'Medium' : 'Low';
   const aiHealth = derivedHealth;
   const aiPriority = derivedPriority;
-  const riskColor =
-    riskScore <= 30
+  const healthColor =
+    cropHealthScore >= 70
       ? 'bg-emerald-500'
-      : riskScore <= 60
+      : cropHealthScore >= 40
         ? 'bg-amber-500'
         : 'bg-red-500';
-  const riskLabel =
-    riskScore <= 30 ? 'Low' : riskScore <= 60 ? 'Medium' : 'High';
+  const healthLabel =
+    cropHealthScore >= 70 ? 'High' : cropHealthScore >= 40 ? 'Medium' : 'Low';
 
   const hasHighStress = stressedPercent >= 35;
   const actionItems: Array<{
@@ -409,7 +376,7 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
               <span className='text-base font-bold leading-5'>
                 {trendLabel}
               </span>
-              {change >= 0 ? (
+              {changePct >= 0 ? (
                 <ArrowUpRight className='h-4 w-4 animate-bounce text-emerald-100' />
               ) : (
                 <ArrowDownRight className='h-4 w-4 animate-bounce text-red-200' />
@@ -444,8 +411,8 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
               {yearsSpanned > 0 ? `${yearsSpanned}-yr change` : 'Yearly change'}
             </p>
             <p className='text-sm font-bold leading-4'>
-              {change >= 0 ? '+' : '-'}
-              {Math.abs(changePct).toFixed(1)}%
+              {changePct >= 0 ? '+' : ''}
+              {changePct.toFixed(1)}%
             </p>
             <p className='text-[9px] text-emerald-100'>
               {earliestYear && latestYear && earliestYear !== latestYear
@@ -648,50 +615,12 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
               <p className='mt-0.5 text-[10px] text-neutral-600'>
                 {action.urgency}
               </p>
-              {action.confidence && (
-                <p className='text-[10px] text-sky-700'>
-                  Confidence: {action.confidence}
-                </p>
-              )}
             </div>
           ))}
         </div>
 
-        <div className='mt-1.5 rounded-md border border-emerald-100 bg-[linear-gradient(145deg,#ecfdf5_0%,#ffffff_70%,#f0fdf4_100%)] px-1.5 py-1'>
-          <p className='text-[9px] font-semibold uppercase tracking-wide text-emerald-700'>
-            NDVI Forecast
-          </p>
-          <div className='mt-1 grid grid-cols-3 gap-1'>
-            <div className='rounded-md border border-emerald-200 bg-emerald-50 px-1 py-0.5'>
-              <p className='text-[9px] text-emerald-700'>Best Case</p>
-              <p className='text-[11px] font-bold text-emerald-800'>
-                {forecast.optimistic.toFixed(2)}
-              </p>
-            </div>
-            <div className='rounded-md border border-sky-200 bg-sky-50 px-1 py-0.5'>
-              <p className='text-[9px] text-sky-700'>Expected</p>
-              <p className='text-[11px] font-bold text-sky-800'>
-                {forecast.expected.toFixed(2)}
-              </p>
-            </div>
-            <div className='rounded-md border border-amber-200 bg-amber-50 px-1 py-0.5'>
-              <p className='text-[9px] text-amber-700'>Worst Case</p>
-              <p className='text-[11px] font-bold text-amber-800'>
-                {forecast.pessimistic.toFixed(2)}
-              </p>
-            </div>
-          </div>
-          <div className='mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-200'>
-            <div
-              className='h-full bg-[repeating-linear-gradient(90deg,#10b981_0,#10b981_6px,transparent_6px,transparent_10px)] opacity-80'
-              style={{
-                width: `${Math.min(100, Math.max(0, forecast.expected * 100))}%`,
-              }}
-            />
-          </div>
-        </div>
       </div>
-              
+
       {hasAnomalyMap && (
         <div className='group relative overflow-hidden rounded-lg border border-red-200 bg-red-50 p-1.5 shadow-sm transition-transform duration-300 hover:-translate-y-0.5'>
           <div className='absolute inset-0 bg-[radial-gradient(circle_at_70%_15%,rgba(239,68,68,0.22),transparent_46%),radial-gradient(circle_at_15%_80%,rgba(245,158,11,0.18),transparent_40%)]' />
@@ -759,9 +688,9 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                   </span>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
-                  <p className='text-neutral-500'>Risk Score</p>
-                  <p className='font-semibold text-neutral-900'>
-                    {Math.round(riskScore)}/100 ({riskLabel})
+                  <p className='text-neutral-500'>Crop Health Score</p>
+                  <p className='text-sm font-bold text-neutral-900'>
+                    {Math.round(cropHealthScore)}/100 ({healthLabel})
                   </p>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
@@ -780,8 +709,8 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
 
               <div className='mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-100'>
                 <div
-                  className={`h-full ${riskColor}`}
-                  style={{ width: `${riskScore}%` }}
+                  className={`h-full ${healthColor}`}
+                  style={{ width: `${cropHealthScore}%` }}
                 />
               </div>
 
@@ -860,9 +789,9 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                   </p>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
-                  <p className='text-neutral-500'>Risk Score</p>
+                  <p className='text-neutral-500'>Crop Health Score</p>
                   <p className='font-semibold text-neutral-900'>
-                    {Math.round(riskScore)}/100 ({riskLabel})
+                    {Math.round(cropHealthScore)}/100 ({healthLabel})
                   </p>
                 </div>
                 <div className='rounded-md border border-neutral-200 bg-neutral-50 p-1.5'>
@@ -875,8 +804,8 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
 
               <div className='mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-100'>
                 <div
-                  className={`h-full ${riskColor}`}
-                  style={{ width: `${riskScore}%` }}
+                  className={`h-full ${healthColor}`}
+                  style={{ width: `${cropHealthScore}%` }}
                 />
               </div>
 
@@ -939,7 +868,7 @@ export const NDVITrendsPanel: React.FC<NDVITrendsPanelProps> = ({
                 </span>
               </div>
               <p className='text-[10px] leading-4 text-neutral-800'>
-                {change >= 0 ? '↑' : '↓'} {Math.abs(changePct).toFixed(1)}%
+                {changePct >= 0 ? '↑' : '↓'} {changePct.toFixed(1)}%
                 {earliestYear && latestYear && earliestYear !== latestYear
                   ? ` from ${earliestYear} to ${latestYear}`
                   : ' across the available years'}

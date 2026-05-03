@@ -44,18 +44,6 @@ const PRIORITY_STYLES: Record<AdvisoryItem['priority'], string> = {
   Low: 'bg-emerald-100 text-emerald-800 border-emerald-200',
 };
 
-const RISK_STYLES: Record<'Low' | 'Moderate' | 'High', string> = {
-  Low: 'from-emerald-50 via-teal-50 to-cyan-50 border-emerald-200',
-  Moderate: 'from-amber-50 via-orange-50 to-yellow-50 border-amber-200',
-  High: 'from-red-50 via-orange-50 to-rose-50 border-red-200',
-};
-
-const RISK_TEXT_STYLES: Record<'Low' | 'Moderate' | 'High', string> = {
-  Low: 'text-emerald-900',
-  Moderate: 'text-amber-900',
-  High: 'text-red-900',
-};
-
 const formatShortDate = (value: string): string => {
   const date = new Date(`${value}T00:00:00`);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -74,14 +62,13 @@ const getConditionLabel = (item: ExtendedWeatherData): string => {
   return 'Clear';
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WeatherTrendTooltip = ({
   active,
   payload,
   label,
 }: {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ dataKey: string; value: number }>;
   label?: string;
 }) => {
   if (!active || !payload?.length) return null;
@@ -172,16 +159,6 @@ export const WeatherDataPanel: React.FC<WeatherDataPanelProps> = ({
 
   const stats = getWeatherStats();
 
-  const heatStress = stats.avgTemp > 35;
-  const heavyRain = stats.totalPrecip > 80;
-  const windRisk = stats.avgWindSpeed > 8;
-
-  const riskScore =
-    (heatStress ? 1 : 0) + (heavyRain ? 1 : 0) + (windRisk ? 1 : 0);
-
-  const riskLevel: 'Low' | 'Moderate' | 'High' =
-    riskScore >= 2 ? 'High' : riskScore === 1 ? 'Moderate' : 'Low';
-
   const trendData = sortedData
     .filter(d => d.temperature !== undefined || d.precipitation !== undefined)
     .slice(-14)
@@ -192,50 +169,6 @@ export const WeatherDataPanel: React.FC<WeatherDataPanelProps> = ({
     }));
 
   const advisories: AdvisoryItem[] = [];
-
-  if (stats.totalPrecip > 50) {
-    advisories.push({
-      title: 'Delay Irrigation',
-      priority: 'High',
-      reason:
-        'Cumulative rainfall is elevated and excess water can stress roots.',
-    });
-  }
-
-  if (stats.avgTemp > 34) {
-    advisories.push({
-      title: 'Increase Irrigation Frequency',
-      priority: 'Medium',
-      reason:
-        'High ambient temperature raises evapotranspiration and soil moisture loss.',
-    });
-  }
-
-  if (stats.avgWindSpeed > 7) {
-    advisories.push({
-      title: 'Plan Wind-Safe Spraying Window',
-      priority: 'Medium',
-      reason:
-        'Higher wind can increase spray drift and reduce nutrient uptake efficiency.',
-    });
-  }
-
-  if (stats.totalPrecip > 35 && stats.avgTemp > 30) {
-    advisories.push({
-      title: 'Monitor Disease Pressure',
-      priority: 'High',
-      reason:
-        'Warm and wet conditions can accelerate fungal and bacterial outbreaks.',
-    });
-  }
-
-  if (advisories.length === 0) {
-    advisories.push({
-      title: 'Maintain Current Schedule',
-      priority: 'Low',
-      reason: 'No major weather stress detected in current conditions.',
-    });
-  }
 
   const forecastSource = sortedData.filter(d => {
     const dayTs = new Date(`${d.date}T00:00:00`).getTime();
@@ -250,54 +183,18 @@ export const WeatherDataPanel: React.FC<WeatherDataPanelProps> = ({
 
   const alerts: AlertItem[] = [];
 
-  if (sortedData.some(d => (d.temperature ?? 0) >= 40)) {
-    alerts.push({
-      title: 'Extreme Heat Alert',
-      message:
-        'Heat-wave level temperatures detected. Protect flowering crops and irrigate during cooler hours.',
-    });
-  }
-
-  if (sortedData.some(d => (d.precipitation ?? 0) >= 40)) {
-    alerts.push({
-      title: 'Heavy Rain Alert',
-      message:
-        'Very high rainfall event detected. Check drainage channels and field runoff immediately.',
-    });
-  }
-
-  if (sortedData.some(d => (d.wind_speed ?? 0) >= 12)) {
-    alerts.push({
-      title: 'High Wind Alert',
-      message:
-        'Strong wind conditions detected. Avoid pesticide spraying and secure vulnerable crop supports.',
-    });
-  }
-
-  const cropImpactItems: string[] = [];
-
-  if (heavyRain)
-    cropImpactItems.push(
-      'High rain can raise root rot risk and nutrient leaching potential.'
-    );
-  if (heatStress)
-    cropImpactItems.push(
-      'Heat stress can increase flower drop risk and reduce grain filling efficiency.'
-    );
-  if (windRisk)
-    cropImpactItems.push(
-      'Sustained wind may cause lodging risk in tall crops and spray drift during treatment.'
-    );
-  if (cropImpactItems.length === 0)
-    cropImpactItems.push(
-      'Current weather pattern indicates low immediate crop stress impact.'
-    );
+  const cropImpactItems = [
+    stats.avgTemp > 34 ? 'High heat stress risk - monitor irrigation closely' : 'Temperature levels within normal range',
+    stats.totalPrecip > 50 ? 'Excess rainfall risk - check drainage in low areas' : 'Rainfall levels appropriate for growth',
+    stats.avgWindSpeed > 15 ? 'Strong winds detected - wind damage risk present' : 'Wind speeds manageable',
+    stats.avgHumidity > 85 ? 'High humidity - watch for fungal diseases' : 'Humidity levels favorable',
+  ];
 
   const aiInsight =
     stats.totalPrecip > 45 && stats.avgTemp > 32
-      ? 'Wet and warm conditions may reduce nitrogen availability and increase pathogen pressure. Reassess soil nutrition after field drainage stabilizes.'
+      ? 'Wet and warm conditions require close monitoring for drainage and nutrient management.'
       : stats.avgTemp > 34
-        ? 'High temperature trend suggests elevated plant water demand. Shift irrigation to early morning and monitor canopy wilting hotspots.'
+        ? 'High temperature trend suggests elevated plant water demand. Ensure adequate irrigation coverage.'
         : stats.totalPrecip > 50
           ? 'Repeated rainfall indicates possible nutrient washout and root oxygen stress. Delay irrigation and inspect low-lying field sections.'
           : 'Weather pattern is stable. Continue routine irrigation and use this window for preventive crop health monitoring.';
@@ -325,79 +222,7 @@ export const WeatherDataPanel: React.FC<WeatherDataPanelProps> = ({
         </button>
       </div>
 
-      {/* Risk Hero */}
-      <div
-        className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 ${RISK_STYLES[riskLevel]}`}
-      >
-        <div className='absolute right-0 top-0 h-24 w-24 rounded-full bg-white/20 blur-xl' />
-        <div className='relative'>
-          <div className='mb-3 flex items-center justify-between'>
-            <div>
-              <p className='text-[11px] font-semibold uppercase tracking-wide text-neutral-700'>
-                Weather Risk Overview
-              </p>
-              <h4
-                className={`text-xl font-bold ${RISK_TEXT_STYLES[riskLevel]}`}
-              >
-                Weather Risk: {riskLevel}
-              </h4>
-            </div>
-            <span
-              className={`rounded-full border px-2 py-1 text-xs font-semibold ${riskLevel === 'High' ? 'border-red-300 bg-red-100 text-red-800' : riskLevel === 'Moderate' ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-emerald-300 bg-emerald-100 text-emerald-800'}`}
-            >
-              Score {riskScore}/3
-            </span>
-          </div>
 
-          <div className='grid grid-cols-3 gap-2'>
-            <div className='rounded-lg border border-white/50 bg-white/60 p-2'>
-              <div className='mb-1 flex items-center gap-1'>
-                <Sun
-                  className={`h-3.5 w-3.5 ${heatStress ? 'text-orange-600' : 'text-neutral-500'}`}
-                />
-                <p className='text-[10px] font-semibold text-neutral-700'>
-                  Heat Stress
-                </p>
-              </div>
-              <p
-                className={`text-xs font-bold ${heatStress ? 'text-orange-700' : 'text-emerald-700'}`}
-              >
-                {heatStress ? 'Detected' : 'Normal'}
-              </p>
-            </div>
-            <div className='rounded-lg border border-white/50 bg-white/60 p-2'>
-              <div className='mb-1 flex items-center gap-1'>
-                <Droplets
-                  className={`h-3.5 w-3.5 ${heavyRain ? 'text-blue-600' : 'text-neutral-500'}`}
-                />
-                <p className='text-[10px] font-semibold text-neutral-700'>
-                  Rain Risk
-                </p>
-              </div>
-              <p
-                className={`text-xs font-bold ${heavyRain ? 'text-blue-700' : 'text-emerald-700'}`}
-              >
-                {heavyRain ? 'Elevated' : 'Normal'}
-              </p>
-            </div>
-            <div className='rounded-lg border border-white/50 bg-white/60 p-2'>
-              <div className='mb-1 flex items-center gap-1'>
-                <Wind
-                  className={`h-3.5 w-3.5 ${windRisk ? 'text-teal-600' : 'text-neutral-500'}`}
-                />
-                <p className='text-[10px] font-semibold text-neutral-700'>
-                  Wind Risk
-                </p>
-              </div>
-              <p
-                className={`text-xs font-bold ${windRisk ? 'text-teal-700' : 'text-emerald-700'}`}
-              >
-                {windRisk ? 'Elevated' : 'Normal'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Season Dates */}
       {(plantingDate || harvestDate) && (

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../hooks/useAuth';
 import { useFarms } from '../hooks/useFarms';
 import type { FarmFormData } from '../types/farm';
-import { CROP_OPTIONS } from '../types/farm';
+import { CROP_OPTIONS, calculateCropDates } from '../types/farm';
 import { LeafletMap } from '../components/map/LeafletMap';
 import {
   ArrowLeft,
@@ -38,6 +38,15 @@ export const CreateFarm: React.FC = () => {
 
   const plantingDate = watch('plantingDate');
   const selectedCrop = watch('crop');
+
+  // Auto-fill planting and harvest dates when crop is selected
+  useEffect(() => {
+    if (selectedCrop) {
+      const { plantingDate: autoPlantingDate, harvestDate: autoHarvestDate } = calculateCropDates(selectedCrop);
+      setValue('plantingDate' as keyof FarmFormData, autoPlantingDate);
+      setValue('harvestDate' as keyof FarmFormData, autoHarvestDate);
+    }
+  }, [selectedCrop, setValue]);
 
   useEffect(() => {
     if (plantingDate && selectedCrop) {
@@ -318,6 +327,7 @@ export const CreateFarm: React.FC = () => {
                     onPolygonComplete={handlePolygonComplete}
                     height='500px'
                     className='w-full'
+                    allowPolygon={false}
                   />
                 </div>
 

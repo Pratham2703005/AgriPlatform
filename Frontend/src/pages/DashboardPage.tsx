@@ -29,7 +29,7 @@ export default function UserDashboard() {
     if (error) {
       toast.error({
         message: error,
-        robotVariant: '/corn-error.png',
+        robotVariant: '/wheat-error.png',
         autoClose: 3000,
       });
     }
