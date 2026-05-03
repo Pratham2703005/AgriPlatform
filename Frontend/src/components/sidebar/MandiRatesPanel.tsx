@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Store } from 'lucide-react';
+import { Store, Sparkles } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -17,6 +17,7 @@ import type { AgmarknetData, MandiDayData } from '@/types/farm';
 interface MandiRatesPanelProps {
   govdata: MandiDayData[];
   agmarknet?: AgmarknetData | undefined;
+  aiAnalysis?: string;
 }
 
 type Unit = 'quintal' | 'kg';
@@ -46,6 +47,7 @@ const formatDateShort = (iso: string) => {
 export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({
   govdata,
   agmarknet,
+  aiAnalysis,
 }) => {
   const [district, setDistrict] = useState<string>('');
   const [unit, setUnit] = useState<Unit>('quintal');
@@ -111,8 +113,9 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({
   }, [sortedDays, district, markets, unit]);
 
   const unitLabel = unit === 'kg' ? '₹/kg' : '₹/qn';
+  const normalizedAiAnalysis = aiAnalysis?.trim();
 
-  if (!govdata || govdata.length === 0) {
+  if ((!govdata || govdata.length === 0) && !normalizedAiAnalysis) {
     return (
       <div className='flex flex-col items-center justify-center py-8 text-center'>
         <Store className='h-12 w-12 text-neutral-300 mb-3' />
@@ -123,215 +126,249 @@ export const MandiRatesPanel: React.FC<MandiRatesPanelProps> = ({
 
   return (
     <div className='space-y-3'>
-      {/* District */}
-      <div>
-        <label className='block text-xs font-medium text-neutral-700 mb-1'>
-          District
-        </label>
-        <select
-          value={district}
-          onChange={e => setDistrict(e.target.value)}
-          className='w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400'
-        >
-          {districts.map(d => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Unit toggle */}
-      <div>
-        <label className='block text-xs font-medium text-neutral-700 mb-1'>
-          Unit
-        </label>
-        <div className='inline-flex rounded-lg border border-neutral-200 p-0.5 bg-neutral-50'>
-          <button
-            onClick={() => setUnit('quintal')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-              unit === 'quintal'
-                ? 'bg-white text-primary-700 shadow-sm'
-                : 'text-neutral-600 hover:text-neutral-900'
-            }`}
-          >
-            ₹ / quintal
-          </button>
-          <button
-            onClick={() => setUnit('kg')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-              unit === 'kg'
-                ? 'bg-white text-primary-700 shadow-sm'
-                : 'text-neutral-600 hover:text-neutral-900'
-            }`}
-          >
-            ₹ / kg
-          </button>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className='border border-neutral-200 rounded-lg p-2 bg-white'>
-        <div className='flex items-center justify-between mb-1.5 px-1'>
-          <div className='text-xs font-semibold text-neutral-900'>
-            Market Trends — 7 day modal price
+      {normalizedAiAnalysis && (
+        <div className='rounded-lg border border-rose-200 bg-rose-50 p-3'>
+          <div className='flex items-center gap-1.5'>
+            <Sparkles className='h-3.5 w-3.5 text-rose-700' />
+            <p className='text-[11px] font-semibold uppercase tracking-wide text-rose-700'>
+              AI Mandi Analysis
+            </p>
           </div>
-          <div className='text-[10px] text-neutral-500'>{unitLabel}</div>
-        </div>
-        {markets.length === 0 ? (
-          <div className='py-8 text-center text-sm text-neutral-500'>
-            No markets available for this selection.
-          </div>
-        ) : (
-          <ResponsiveContainer width='100%' height={240}>
-            <LineChart
-              data={chartData}
-              margin={{ top: 8, right: 8, left: -12, bottom: 4 }}
-            >
-              <CartesianGrid strokeDasharray='3 3' stroke='#e5e5e5' />
-              <XAxis dataKey='date' tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                formatter={v => {
-                  const value =
-                    typeof v === 'number' ? v : parseFloat(v as string);
-                  return Number.isNaN(value) ? 'N/A' : `${value} ${unitLabel}`;
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-              {markets.map((m, i) => (
-                <Line
-                  key={m}
-                  type='monotone'
-                  dataKey={m}
-                  stroke={LINE_COLORS[i % LINE_COLORS.length] as string}
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                  connectNulls
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-
-      {/* Markets list summary */}
-      {markets.length > 0 && (
-        <div className='text-[11px] text-neutral-600'>
-          <span className='font-medium text-neutral-800'>Markets:</span>{' '}
-          {markets.join(', ')}
+          <p className='mt-1 text-xs leading-relaxed text-rose-900'>
+            {normalizedAiAnalysis}
+          </p>
         </div>
       )}
 
-      {/* Agmarknet Bar Chart - Selected District Prices */}
-      {agmarknet &&
-        agmarknet.success &&
-        agmarknet.rows &&
-        agmarknet.rows.length > 0 &&
-        district && (
-          <div className='border border-neutral-200 rounded-lg p-2 bg-white mt-4'>
+      {!govdata || govdata.length === 0 ? (
+        <div className='flex flex-col items-center justify-center py-8 text-center'>
+          <Store className='h-12 w-12 text-neutral-300 mb-3' />
+          <p className='text-sm text-neutral-600'>
+            No mandi rate data available
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* District */}
+          <div>
+            <label className='block text-xs font-medium text-neutral-700 mb-1'>
+              District
+            </label>
+            <select
+              value={district}
+              onChange={e => setDistrict(e.target.value)}
+              className='w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400'
+            >
+              {districts.map(d => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Unit toggle */}
+          <div>
+            <label className='block text-xs font-medium text-neutral-700 mb-1'>
+              Unit
+            </label>
+            <div className='inline-flex rounded-lg border border-neutral-200 p-0.5 bg-neutral-50'>
+              <button
+                onClick={() => setUnit('quintal')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  unit === 'quintal'
+                    ? 'bg-white text-primary-700 shadow-sm'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                ₹ / quintal
+              </button>
+              <button
+                onClick={() => setUnit('kg')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  unit === 'kg'
+                    ? 'bg-white text-primary-700 shadow-sm'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                ₹ / kg
+              </button>
+            </div>
+          </div>
+
+          {/* Chart */}
+          <div className='border border-neutral-200 rounded-lg p-2 bg-white'>
             <div className='flex items-center justify-between mb-1.5 px-1'>
               <div className='text-xs font-semibold text-neutral-900'>
-                {district} Wholesale Prices
+                Market Trends — 7 day modal price
               </div>
-              <div className='text-[10px] text-neutral-500'>Comparison</div>
+              <div className='text-[10px] text-neutral-500'>{unitLabel}</div>
             </div>
-            {(() => {
-              const districtData = (
-                agmarknet.rows as Array<Record<string, string | number | null>>
-              ).find(row => row.district === district);
-              if (!districtData) {
-                return (
-                  <div className='py-4 text-center text-sm text-neutral-500'>
-                    No agmarknet data available for {district}
-                  </div>
-                );
-              }
-              const divisor = unit === 'kg' ? 100 : 1;
-              const priceKeys = Object.keys(districtData)
-                .filter(key => key.startsWith('prices_'))
-                .sort();
-
-              const chartData = priceKeys
-                .map(key => {
-                  const price = districtData[key];
-                  // Convert prices_april_2026 to April 2026
-                  const monthName = key
-                    .replace('prices_', '')
-                    .split('_')
-                    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-                    .join(' ');
-
-                  return {
-                    month: monthName,
-                    key,
-                    price: price
-                      ? +((price as number) / divisor).toFixed(2)
-                      : null,
-                  };
-                })
-                .filter(d => d.price !== null);
-
-              if (chartData.length === 0) {
-                return (
-                  <div className='py-4 text-center text-sm text-neutral-500'>
-                    No price data available.
-                  </div>
-                );
-              }
-
-              return (
-                <>
-                  <ResponsiveContainer width='100%' height={200}>
-                    <BarChart
-                      data={chartData}
-                      margin={{ top: 8, right: 8, left: -12, bottom: 30 }}
-                    >
-                      <CartesianGrid strokeDasharray='3 3' stroke='#e5e5e5' />
-                      <XAxis dataKey='month' tick={{ fontSize: 9 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                        formatter={v => {
-                          const value =
-                            typeof v === 'number'
-                              ? v
-                              : typeof v === 'string'
-                                ? parseFloat(v)
-                                : 0;
-                          return Number.isNaN(value)
-                            ? 'N/A'
-                            : `${value} ${unitLabel}`;
-                        }}
-                      />
-                      <Bar dataKey='price' fill='#10b981' name='Price' />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <div className='text-[10px] text-neutral-600 mt-2 px-1 space-y-1'>
-                    {chartData.map(item => (
-                      <div key={item.key}>
-                        <span className='font-medium'>{item.month}:</span>{' '}
-                        {item.price} {unitLabel}
-                      </div>
-                    ))}
-                    <div>
-                      <span className='font-medium'>
-                        Previous Month Change:
-                      </span>{' '}
-                      {districtData.change_over_previous_month ?? 'N/A'}%
-                    </div>
-                    <div>
-                      <span className='font-medium'>YoY Change:</span>{' '}
-                      {districtData.change_over_previous_year ?? 'N/A'}%
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
+            {markets.length === 0 ? (
+              <div className='py-8 text-center text-sm text-neutral-500'>
+                No markets available for this selection.
+              </div>
+            ) : (
+              <ResponsiveContainer width='100%' height={240}>
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 8, right: 8, left: -12, bottom: 4 }}
+                >
+                  <CartesianGrid strokeDasharray='3 3' stroke='#e5e5e5' />
+                  <XAxis dataKey='date' tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                    formatter={v => {
+                      const value =
+                        typeof v === 'number' ? v : parseFloat(v as string);
+                      return Number.isNaN(value)
+                        ? 'N/A'
+                        : `${value} ${unitLabel}`;
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  {markets.map((m, i) => (
+                    <Line
+                      key={m}
+                      type='monotone'
+                      dataKey={m}
+                      stroke={LINE_COLORS[i % LINE_COLORS.length] as string}
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
-        )}
+
+          {/* Markets list summary */}
+          {markets.length > 0 && (
+            <div className='text-[11px] text-neutral-600'>
+              <span className='font-medium text-neutral-800'>Markets:</span>{' '}
+              {markets.join(', ')}
+            </div>
+          )}
+
+          {/* Agmarknet Bar Chart - Selected District Prices */}
+          {agmarknet &&
+            agmarknet.success &&
+            agmarknet.rows &&
+            agmarknet.rows.length > 0 &&
+            district && (
+              <div className='border border-neutral-200 rounded-lg p-2 bg-white mt-4'>
+                <div className='flex items-center justify-between mb-1.5 px-1'>
+                  <div className='text-xs font-semibold text-neutral-900'>
+                    {district} Wholesale Prices
+                  </div>
+                  <div className='text-[10px] text-neutral-500'>Comparison</div>
+                </div>
+                {(() => {
+                  const districtData = (
+                    agmarknet.rows as Array<
+                      Record<string, string | number | null>
+                    >
+                  ).find(row => row.district === district);
+                  if (!districtData) {
+                    return (
+                      <div className='py-4 text-center text-sm text-neutral-500'>
+                        No agmarknet data available for {district}
+                      </div>
+                    );
+                  }
+                  const divisor = unit === 'kg' ? 100 : 1;
+                  const priceKeys = Object.keys(districtData)
+                    .filter(key => key.startsWith('prices_'))
+                    .sort();
+
+                  const chartData = priceKeys
+                    .map(key => {
+                      const price = districtData[key];
+                      // Convert prices_april_2026 to April 2026
+                      const monthName = key
+                        .replace('prices_', '')
+                        .split('_')
+                        .map(
+                          part => part.charAt(0).toUpperCase() + part.slice(1)
+                        )
+                        .join(' ');
+
+                      return {
+                        month: monthName,
+                        key,
+                        price: price
+                          ? +((price as number) / divisor).toFixed(2)
+                          : null,
+                      };
+                    })
+                    .filter(d => d.price !== null);
+
+                  if (chartData.length === 0) {
+                    return (
+                      <div className='py-4 text-center text-sm text-neutral-500'>
+                        No price data available.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <ResponsiveContainer width='100%' height={200}>
+                        <BarChart
+                          data={chartData}
+                          margin={{ top: 8, right: 8, left: -12, bottom: 30 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray='3 3'
+                            stroke='#e5e5e5'
+                          />
+                          <XAxis dataKey='month' tick={{ fontSize: 9 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip
+                            contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                            formatter={v => {
+                              const value =
+                                typeof v === 'number'
+                                  ? v
+                                  : typeof v === 'string'
+                                    ? parseFloat(v)
+                                    : 0;
+                              return Number.isNaN(value)
+                                ? 'N/A'
+                                : `${value} ${unitLabel}`;
+                            }}
+                          />
+                          <Bar dataKey='price' fill='#10b981' name='Price' />
+                        </BarChart>
+                      </ResponsiveContainer>
+                      <div className='text-[10px] text-neutral-600 mt-2 px-1 space-y-1'>
+                        {chartData.map(item => (
+                          <div key={item.key}>
+                            <span className='font-medium'>{item.month}:</span>{' '}
+                            {item.price} {unitLabel}
+                          </div>
+                        ))}
+                        <div>
+                          <span className='font-medium'>
+                            Previous Month Change:
+                          </span>{' '}
+                          {districtData.change_over_previous_month ?? 'N/A'}%
+                        </div>
+                        <div>
+                          <span className='font-medium'>YoY Change:</span>{' '}
+                          {districtData.change_over_previous_year ?? 'N/A'}%
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+        </>
+      )}
     </div>
   );
 };

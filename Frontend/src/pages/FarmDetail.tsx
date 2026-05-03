@@ -109,7 +109,7 @@ export default function FarmDetail() {
       toast.error({
         message: heatmapError,
         robotVariant: '/corn-error.png',
-        autoClose: 0,
+        autoClose: 3000,
       });
     }
   }, [heatmapError]);
@@ -274,7 +274,7 @@ export default function FarmDetail() {
         toast.success({
           message: 'Farm deleted successfully!',
           robotVariant: '/corn-base.png',
-          autoClose: 0,
+          autoClose: 3000,
         });
         setTimeout(() => navigate('/dashboard'), 500);
       } catch (error) {
@@ -292,7 +292,7 @@ export default function FarmDetail() {
         toast.success({
           message: 'Refreshing analysis...',
           robotVariant: '/corn-base.png',
-          autoClose: 0,
+          autoClose: 3000,
         });
         fetchHeatmapData(
           coordinates,
@@ -372,6 +372,10 @@ export default function FarmDetail() {
             canEdit={canEdit}
             onDelete={handleDelete}
             onViewFarmOnMap={() => setMapFocusRequestId(prev => prev + 1)}
+            onViewStressMap={() => {
+              setActiveLayer('anomaly');
+              setMapFocusRequestId(prev => prev + 1);
+            }}
             onRefreshAnalysis={handleRefreshAnalysis}
             onRefreshWeather={() => {
               if (farm && farm.coordinates && farm.coordinates.length > 0) {

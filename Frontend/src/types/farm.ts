@@ -150,10 +150,12 @@ export interface HeatmapData {
     risk_alerts: string[];
   };
   news?: NewsItem[];
+  news_ai_analysis?: string;
   rate?: {
     govdata?: MandiDayData[] | null;
     agmarknet?: AgmarknetData;
   };
+  mandi_ai_analysis?: string;
   ai_analysis?: {
     summary: string;
     overall_health: 'Excellent' | 'Good' | 'Moderate' | 'Poor' | 'Critical';

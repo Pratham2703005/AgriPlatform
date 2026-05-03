@@ -3,6 +3,43 @@ import { FarmAPI } from '../services/farmApi';
 import { heatmapService } from '../services/fileDatabase'; // kept for guest mode (localStorage)
 import type { HeatmapData } from '../types/farm';
 
+type LegacyHeatmapData = HeatmapData & {
+  news_analysis?: string;
+  mandi_analysis?: string;
+};
+
+const normalizeHeatmapData = (raw: unknown): HeatmapData => {
+  const topLevel = (raw ?? {}) as Record<string, unknown>;
+  const nestedData =
+    topLevel.data && typeof topLevel.data === 'object'
+      ? (topLevel.data as Record<string, unknown>)
+      : null;
+
+  const source =
+    nestedData &&
+    ('predicted_yield' in nestedData ||
+      'masks' in nestedData ||
+      'pixel_counts' in nestedData)
+      ? (nestedData as unknown as LegacyHeatmapData)
+      : (topLevel as unknown as LegacyHeatmapData);
+
+  return {
+    ...source,
+    news_ai_analysis:
+      typeof source.news_ai_analysis === 'string'
+        ? source.news_ai_analysis
+        : typeof source.news_analysis === 'string'
+          ? source.news_analysis
+          : undefined,
+    mandi_ai_analysis:
+      typeof source.mandi_ai_analysis === 'string'
+        ? source.mandi_ai_analysis
+        : typeof source.mandi_analysis === 'string'
+          ? source.mandi_analysis
+          : undefined,
+  } as HeatmapData;
+};
+
 export interface UseHeatmapReturn {
   heatmapData: HeatmapData | null;
   loading: boolean;
@@ -41,7 +78,7 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
             // Load from MongoDB via backend
             const cached = await FarmAPI.getHeatmapCache(farmId);
             if (cached) {
-              setHeatmapData(cached.data);
+              setHeatmapData(normalizeHeatmapData(cached.data));
               setIsCached(true);
               setCachedAt(cached.cachedAt);
               console.log(
@@ -53,7 +90,7 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
             // Guest mode: fall back to localStorage
             const cached = await heatmapService.getByFarmId(farmId);
             if (cached) {
-              setHeatmapData(cached.data);
+              setHeatmapData(normalizeHeatmapData(cached.data));
               setIsCached(true);
               setCachedAt(cached.cachedAt);
               console.log(
@@ -82,46 +119,122 @@ export const useHeatmap = (farmId?: string): UseHeatmapReturn => {
       setLoading(true);
       setError(null);
 
+      const toDateOnly = (value?: string): string | undefined => {
+        if (!value) return undefined;
+        const match = value.match(/\d{4}-\d{2}-\d{2}/);
+        return match ? match[0] : undefined;
+      };
+
+      const clampDate = (value: string, min: string, max: string): string => {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+      };
+
+      const buildPayload = (
+        coordinatesParam: number[][],
+        t1Param: number,
+        t2Param: number,
+        cultivationDateParam?: string,
+        harvestDateParam?: string,
+        cropParam?: string
+      ) => ({
+        coordinates: coordinatesParam,
+        t1: t1Param,
+        t2: t2Param,
+        ...(cultivationDateParam && { cultivation_date: cultivationDateParam }),
+        ...(harvestDateParam && { harvest_date: harvestDateParam }),
+        ...(cropParam && { crop: cropParam }),
+      });
+
+      const requestHeatmap = async (
+        payload: ReturnType<typeof buildPayload>
+      ): Promise<Response> => {
+        return fetch('http://127.0.0.1:8100/generate_heatmap_lite', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      };
+
       try {
-        // Call the FastAPI endpoint directly
-        const response = await fetch(
-          'http://127.0.0.1:8001/generate_heatmap_lite',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              coordinates: coordinates,
-              t1: t1,
-              t2: t2,
-              ...(cultivation_date && { cultivation_date }),
-              ...(harvest_date && { harvest_date }),
-              ...(crop && { crop }),
-            }),
-          }
+        let safeCultivationDate = toDateOnly(cultivation_date);
+        let safeHarvestDate = toDateOnly(harvest_date);
+
+        let response = await requestHeatmap(
+          buildPayload(
+            coordinates,
+            t1,
+            t2,
+            safeCultivationDate,
+            safeHarvestDate,
+            crop
+          )
         );
 
         if (!response.ok) {
           let backendDetail = '';
+          let backendReason = '';
+
           try {
             const errorBody = await response.json();
-            backendDetail = (
+            backendReason =
+              errorBody?.reason ||
+              errorBody?.detail?.reason ||
               errorBody?.detail ||
               errorBody?.message ||
-              ''
-            ).toString();
+              '';
+            backendDetail = String(backendReason || '').trim();
           } catch {
             // Ignore JSON parsing errors for non-JSON responses.
           }
 
-          const message = backendDetail
-            ? `Heatmap API error (${response.status}): ${backendDetail}`
-            : `Heatmap API error (${response.status})`;
-          throw new Error(message);
+          // Auto-retry once with clamped dates if backend reports allowed range.
+          const rangeMatch = backendDetail.match(
+            /allowed range from (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2})/i
+          );
+
+          if (rangeMatch) {
+            const minAllowed = rangeMatch[1]!;
+            const maxAllowed = rangeMatch[2]!;
+
+            const originalStart = safeCultivationDate || minAllowed;
+            const originalEnd = safeHarvestDate || maxAllowed;
+
+            let clampedStart = clampDate(originalStart, minAllowed, maxAllowed);
+            let clampedEnd = clampDate(originalEnd, minAllowed, maxAllowed);
+
+            if (clampedStart > clampedEnd) {
+              clampedStart = minAllowed;
+              clampedEnd = maxAllowed;
+            }
+
+            response = await requestHeatmap(
+              buildPayload(coordinates, t1, t2, clampedStart, clampedEnd, crop)
+            );
+
+            if (response.ok) {
+              console.warn(
+                `Heatmap date range auto-adjusted to ${clampedStart}..${clampedEnd}`
+              );
+            } else {
+              const retryMessage = backendDetail
+                ? `Heatmap API error (${response.status}): ${backendDetail}`
+                : `Heatmap API error (${response.status})`;
+              throw new Error(retryMessage);
+            }
+          } else {
+            const message = backendDetail
+              ? `Heatmap API error (${response.status}): ${backendDetail}`
+              : `Heatmap API error (${response.status})`;
+            throw new Error(message);
+          }
         }
 
-        const data: HeatmapData = await response.json();
+        const rawData = await response.json();
+        const data = normalizeHeatmapData(rawData);
         setHeatmapData(data);
         setIsCached(false);
         setCachedAt(null);

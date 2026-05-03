@@ -52,6 +52,7 @@ interface SidebarTabsProps {
   weatherLoading?: boolean;
   exportLoading?: boolean;
   onViewFarmOnMap?: () => void;
+  onViewStressMap?: () => void;
 }
 
 const TABS: Tab[] = [
@@ -121,6 +122,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   weatherLoading = false,
   exportLoading = false,
   onViewFarmOnMap,
+  onViewStressMap,
 }) => {
   const [activeTab, setActiveTab] = useState<TabId | null>('farm');
 
@@ -134,6 +136,11 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
   const handleViewOnMap = () => {
     onViewFarmOnMap?.();
+    setActiveTab(null);
+  };
+
+  const handleViewStressMap = () => {
+    onViewStressMap?.();
     setActiveTab(null);
   };
 
@@ -245,7 +252,10 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
             )}
 
             {activeTab === 'trends' && heatmapData && (
-              <NDVITrendsPanel heatmapData={heatmapData} />
+              <NDVITrendsPanel
+                heatmapData={heatmapData}
+                onViewStressMap={handleViewStressMap}
+              />
             )}
 
             {activeTab === 'trends' && !heatmapData && (
@@ -277,13 +287,17 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
             )}
 
             {activeTab === 'news' && (
-              <NewsPanel news={heatmapData?.news ?? []} />
+              <NewsPanel
+                news={heatmapData?.news ?? []}
+                aiAnalysis={heatmapData?.news_ai_analysis}
+              />
             )}
 
             {activeTab === 'mandi' && (
               <MandiRatesPanel
                 govdata={heatmapData?.rate?.govdata ?? []}
                 agmarknet={heatmapData?.rate?.agmarknet}
+                aiAnalysis={heatmapData?.mandi_ai_analysis}
               />
             )}
 
