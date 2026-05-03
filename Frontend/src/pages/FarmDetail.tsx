@@ -11,7 +11,6 @@ import type { LayerType } from '../components/map/HeatmapOverlay';
 import { ArrowLeft, Sprout, Lock } from 'lucide-react';
 import type { Farm } from '@/types/farm';
 import { toast } from 'robot-toast';
-import '@/styles/customToasts.css';
 
 export default function FarmDetail() {
   const { id } = useParams<{ id: string }>();
@@ -115,24 +114,61 @@ export default function FarmDetail() {
     }
   }, [heatmapError]);
 
-  // Display 7 toasts on page load with different images
+  // Display 7 toasts on page load with different types and custom styles
   useEffect(() => {
     const toastConfigs = [
-      { message: '🥕 Carrot Farm Data Loaded', robotVariant: '/carrot-base.png' },
-      { message: '🌽 Corn Yield Analytics Ready', robotVariant: '/corn-base.png' },
-      { message: '🥔 Potato Database Connected', robotVariant: '/potato-base.png' },
-      { message: '🌾 Rice Forecasting Enabled', robotVariant: '/rice-base.png' },
-      { message: '🌾 Wheat Predictions Active', robotVariant: '/wheat-base.png' },
-      { message: '⚠️ Carrot Risk Assessment', robotVariant: '/carrot-error.png' },
-      { message: '⚠️ Corn Disease Detection', robotVariant: '/corn-error.png', type: 'warning' }
+      {
+        type: 'success' as const,
+        message: 'Rice Forecasting Enabled',
+        robotVariant: '/rice-base.png',
+        style: {
+          background: 'linear-gradient(135deg, #6ee7b7 0%, #10b981 100%)',
+          color: '#fff',
+          borderLeft: '4px solid #059669',
+          borderRadius: '14px',
+          boxShadow: '0 10px 30px -10px rgba(16,185,129,0.5)',
+        }
+      },
+      {
+        type: 'success' as const,
+        message: 'Wheat Predictions Active',
+        robotVariant: '/wheat-base.png',
+        style: {
+          background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+          color: '#fff',
+          borderLeft: '4px solid #92400e',
+          borderRadius: '14px',
+          boxShadow: '0 10px 30px -10px rgba(217,119,6,0.5)',
+        }
+      },
+      {
+        type: 'warning' as const,
+        message: 'Carrot Risk Assessment',
+        robotVariant: '/carrot-error.png',
+        style: {
+          background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+          color: '#fff',
+          borderLeft: '4px solid #c2410c',
+          borderRadius: '14px',
+          boxShadow: '0 10px 30px -10px rgba(249,115,22,0.5)',
+        }
+      },
     ];
 
     toastConfigs.forEach((config, index) => {
       setTimeout(() => {
-        toast.success({
+        const toastMethod = {
+          success: toast.success,
+          error: toast.error,
+          warning: toast.warning,
+          info: toast.info
+        }[config.type];
+
+        toastMethod({
           message: config.message,
           robotVariant: config.robotVariant,
-          autoClose: 0
+          autoClose: 0,
+          style: config.style
         });
       }, index * 200);
     });
