@@ -57,9 +57,7 @@ const computeHealthTrend = (
   if (!ndviTrend || ndviTrend.length < 2) {
     return { direction: null, deltaPct: 0, priorYearsCount: 0 };
   }
-  const sorted = ndviTrend
-    .slice()
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = ndviTrend.slice().sort((a, b) => a.date.localeCompare(b.date));
   const latest = sorted[sorted.length - 1]!.mean_ndvi;
   const priorPoints = sorted.slice(0, -1);
   const priorAvg =
@@ -381,7 +379,30 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
           </div>
         </div>
       </div>
-
+      {/* --- Maps Overview --- */}
+      <div className='rounded-xl border border-neutral-200 bg-white p-3 shadow-sm'>
+        <div className='mb-2 flex items-center justify-between gap-2'>
+          <div className='flex items-center gap-1.5'>
+            <Layers className='h-4 w-4 text-emerald-700' />
+            <h3 className='text-sm font-semibold text-neutral-900'>
+              Maps Overview
+            </h3>
+          </div>
+          {analysisDate && (
+            <span
+              className='text-[11px] text-neutral-500'
+              title='Source: Sentinel-2 (Copernicus)'
+            >
+              {analysisDate} · Sentinel-2
+            </span>
+          )}
+        </div>
+        <div className='space-y-3'>
+          <IndexRow label='Health (NDVI)' shares={ndviShares} />
+          <IndexRow label='Water (NDWI)' shares={ndwiShares} />
+          <IndexRow label='Nutrition (NDRE)' shares={ndreShares} />
+        </div>
+      </div>
       {/* --- Location --- */}
       <div className='rounded-xl border border-neutral-200 bg-white p-3 shadow-sm'>
         <div className='mb-2 flex items-center gap-1.5'>
@@ -534,31 +555,6 @@ export const FarmOverviewPanel: React.FC<FarmOverviewPanelProps> = ({
             </button>
           </div>
         )}
-      </div>
-
-      {/* --- Maps Overview --- */}
-      <div className='rounded-xl border border-neutral-200 bg-white p-3 shadow-sm'>
-        <div className='mb-2 flex items-center justify-between gap-2'>
-          <div className='flex items-center gap-1.5'>
-            <Layers className='h-4 w-4 text-emerald-700' />
-            <h3 className='text-sm font-semibold text-neutral-900'>
-              Maps Overview
-            </h3>
-          </div>
-          {analysisDate && (
-            <span
-              className='text-[11px] text-neutral-500'
-              title='Source: Sentinel-2 (Copernicus)'
-            >
-              {analysisDate} · Sentinel-2
-            </span>
-          )}
-        </div>
-        <div className='space-y-3'>
-          <IndexRow label='Health (NDVI)' shares={ndviShares} />
-          <IndexRow label='Water (NDWI)' shares={ndwiShares} />
-          <IndexRow label='Nutrition (NDRE)' shares={ndreShares} />
-        </div>
       </div>
     </div>
   );
