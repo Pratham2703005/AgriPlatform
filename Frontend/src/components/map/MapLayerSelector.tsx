@@ -508,12 +508,12 @@ export const MapLayerSelector: React.FC<MapLayerSelectorProps> = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
+                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
                       <span className="text-[11px] text-neutral-600">Worse than average</span>
                     </div>
                     <div className="h-3 w-px bg-neutral-200" />
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
+                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
                       <span className="text-[11px] text-neutral-600">Better than average</span>
                     </div>
                   </div>
